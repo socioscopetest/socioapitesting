@@ -3,10 +3,11 @@
 import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import type { OAuthProvider } from "@lovable.dev/cloud-auth-js";
 import { supabase } from "../supabase/client";
+
 const lovableAuth = createLovableAuth({
   // Vercel does not provide Lovable hosting's relative /~oauth/initiate proxy.
-  // Use Lovable's hosted OAuth broker directly for deployments outside Lovable.
-  oauthBrokerUrl: "https://oauth.lovable.app/~oauth/initiate",
+  // The hosted broker's public initiate endpoint is /initiate (not /~oauth/initiate).
+  oauthBrokerUrl: "https://oauth.lovable.app/initiate",
 });
 
 type SignInOptions = {

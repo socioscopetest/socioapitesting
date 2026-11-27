@@ -19,7 +19,7 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
   ] as const : [
     ['Engage', item['engagement'] ?? stats['engagement'], Activity], ['Likes', item['likes'] ?? stats['likes'], Heart], ['Comments', item['comments'] ?? stats['comments'], MessageCircle], ['Shares', item['shares'] ?? stats['shares'], Share2], ['Views', item['views'] ?? stats['views'], Eye], ['Reach', item['reach'] ?? stats['reach'], Radio],
   ] as const;
-  const fallback = username && platform === 'instagram' ? `https://www.instagram.com/${username}/` : username && platform === 'tiktok' ? `https://www.tiktok.com/@${username}${!profile && item['original_id'] ? `/video/${item['original_id']}` : ''}` : undefined;
+  const fallback = username && platform === 'instagram' ? `https://www.instagram.com/${username}/` : username && platform === 'tiktok' ? `https://www.tiktok.com/@${username}${!profile && item['original_id'] ? `/video/${item['original_id']}` : ''}` : username && platform === 'threads' ? `https://threads.com/@${username}` : undefined;
   const candidate = typeof item['url'] === 'string' ? item['url'] : fallback;
   const url = candidate && /^https:\/\//.test(candidate) ? candidate : undefined;
   return <article className="post-card">
@@ -39,6 +39,6 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
         {metricValues.map(([label, value, Icon]) => <div className={profile ? '' : 'metric'} key={label}><div className="metric-label"><Icon />{label}</div><p className={`metric-value ${label === 'Engage' ? 'text-primary' : ''}`}>{metric(value)}</p></div>)}
       </div>
     </div>
-    <div className="post-footer"><span className="max-w-[42%] truncate font-mono text-[9px] text-muted-foreground" title={display(item['original_id'])}>ID: {display(item['original_id'])}</span><div className="flex items-center gap-1"><Button variant="ghost" size="sm" className="text-[10px] text-muted-foreground" title="Inspect Item JSON" aria-label={`Inspect JSON ${display(name)}`} onClick={() => onInspect(item)}><Code2 /> <span className="hidden sm:inline">Inspect JSON</span></Button>{url && <Button asChild variant="ghost" size="sm" className="text-[10px] text-primary"><a href={url} target="_blank" rel="noopener noreferrer">Buka di {platform === 'tiktok' ? 'TikTok' : platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : 'YouTube'} <ExternalLink /></a></Button>}</div></div>
+    <div className="post-footer"><span className="max-w-[42%] truncate font-mono text-[9px] text-muted-foreground" title={display(item['original_id'])}>ID: {display(item['original_id'])}</span><div className="flex items-center gap-1"><Button variant="ghost" size="sm" className="text-[10px] text-muted-foreground" title="Inspect Item JSON" aria-label={`Inspect JSON ${display(name)}`} onClick={() => onInspect(item)}><Code2 /> <span className="hidden sm:inline">Inspect JSON</span></Button>{url && <Button asChild variant="ghost" size="sm" className="text-[10px] text-primary"><a href={url} target="_blank" rel="noopener noreferrer">Buka di {platform === 'tiktok' ? 'TikTok' : platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform === 'youtube' ? 'YouTube' : 'Threads'} <ExternalLink /></a></Button>}</div></div>
   </article>;
 }

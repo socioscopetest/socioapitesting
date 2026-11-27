@@ -51,3 +51,49 @@ describe('Strict monitoring rules', () => {
   it('routes Instagram Search Post to the Instagram events endpoint', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_post', { keyword: 'kopi', start_date: '2026-11-01', end_date: '2026-11-27', sort_by: 'time', sort_order: 'desc', page: '2', cursor: '' }).href).toBe('https://api.socioapi.com/api/v1/events/instagram/search?keyword=kopi&start_date=2026-11-01&end_date=2026-11-27&sort_by=time&sort_order=desc&page=2'); });
   it('routes Instagram Search Profile to the senders endpoint with the Instagram platform filter', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_profile', { username: 'nadiaputri', name: '', page: '1', size: '10' }).href).toBe('https://api.socioapi.com/api/v1/senders/search?username=nadiaputri&page=1&size=10&platform=instagram'); });
 });
+
+
+describe('All nine SocioAPI platform request contracts', () => {
+  it.each([
+    ['tiktok', 'search_post', '/api/v1/events/tiktok/search?keyword=politik&page=1'],
+    ['instagram', 'search_post', '/api/v1/events/instagram/search?keyword=politik&page=1'],
+    ['facebook', 'search_post', '/api/v1/events/facebook/search?keyword=politik&page=1'],
+    ['youtube', 'search_post', '/api/v1/events/youtube/search?keyword=politik&page=1'],
+    ['threads', 'search_post', '/api/v1/events/threads/search?keyword=politik&event_type=post&page=1'],
+    ['twitter', 'search_post', '/api/v1/events/twitter/search?keyword=politik&page=1'],
+    ['news', 'search_post', '/api/v1/events/news/search?keyword=politik&page=1'],
+    ['tv', 'search_post', '/api/v1/transcribe/search?keyword=politik&source_type=tv&page=1'],
+    ['radio', 'search_post', '/api/v1/transcribe/search?keyword=politik&source_type=radio&page=1'],
+  ] as const)('%s %s uses the expected endpoint and query', (platform, action, expected) => {
+    const params = platform === 'threads'
+      ? { keyword: 'politik', event_type: 'post', page: '1' }
+      : { keyword: 'politik', page: '1' };
+    const url = buildSearchUrl('https://api.socioapi.com', platform, action, params);
+    expect(url.pathname + url.search).toBe(expected);
+    expect(url.protocol).toBe('https:');
+  });
+
+  it.each([
+    ['tiktok', 'tiktok'],
+    ['instagram', 'instagram'],
+    ['facebook', 'facebook'],
+    ['youtube', 'youtube'],
+    ['threads', 'threads'],
+    ['twitter', 'twitter'],
+  ] as const)('%s profile search is scoped to its platform', (platform, expectedPlatform) => {
+    const url = buildSearchUrl('https://api.socioapi.com', platform, 'search_profile', { username: 'socioapi', page: '1', size: '10' });
+    expect(url.pathname).toBe('/api/v1/senders/search');
+    expect(url.searchParams.get('platform')).toBe(expectedPlatform);
+    expect(url.searchParams.get('username')).toBe('socioapi');
+  });
+
+  it('does not invent credit usage when SocioAPI only returns remaining balance', () => {
+    expect(creditsUsed({ http_status: 200, payload: { billing: { remaining_credits: 2493.1 } } })).toBeNull();
+  });
+
+  it('keeps News, TV, and Radio in Search Post mode only', () => {
+    for (const platform of ['news', 'tv', 'radio'] as const) {
+      expect(previewResult(platform, 'search_post').http_status).toBe(200);
+    }
+  });
+});

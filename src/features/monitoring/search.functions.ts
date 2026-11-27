@@ -44,3 +44,53 @@ export const searchSocioAPI = createServerFn({ method: 'POST' })
       return { http_status: 502, outbound_ip, payloadJSON: JSON.stringify({ message: 'SocioAPI tidak dapat dihubungi. Silakan coba lagi.' }), synced_search_id: null, sync_error: false };
     }
   });
+
+
+/**
+ * Checks DNS/TLS/HTTP reachability of the SocioAPI host only.
+ * It deliberately sends no API key and does not call a billable API route.
+ */
+export const checkSocioAPIHost = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const keyConfigured = Boolean(process.env['SOCIOAPI_API_KEY']?.trim());
+    const base = process.env['SOCIOAPI_BASE_URL'] || 'https://api.socioapi.com';
+    let url: URL;
+    try {
+      url = new URL(base);
+    } catch {
+      return { reachable: false, key_configured: keyConfigured, host_status: null, outbound_ip: null, message: 'SOCIOAPI_BASE_URL tidak valid.' };
+    }
+    if (url.protocol !== 'https:') {
+      return { reachable: false, key_configured: keyConfigured, host_status: null, outbound_ip: null, message: 'URL SocioAPI harus menggunakan HTTPS.' };
+    }
+    const { detectOutboundIP } = await import('./outbound.server');
+    const outbound_ip = await detectOutboundIP();
+    try {
+      // Probe only the host root without Authorization. A 401/403/404 still
+      // proves the host answered; it does not verify the API key or endpoint.
+      const response = await fetch(url.origin, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(8000),
+        redirect: 'manual',
+      });
+      return {
+        reachable: response.status < 500,
+        key_configured: keyConfigured,
+        host_status: response.status,
+        outbound_ip,
+        message: response.status < 500
+          ? 'Host SocioAPI dapat dijangkau. Kunci API dan endpoint belum diuji.'
+          : `Host SocioAPI merespons HTTP ${response.status}.`,
+      };
+    } catch (cause) {
+      const timedOut = cause instanceof Error && (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+      return {
+        reachable: false,
+        key_configured: keyConfigured,
+        host_status: null,
+        outbound_ip,
+        message: timedOut ? 'Pemeriksaan host timeout setelah 8 detik.' : 'Host SocioAPI tidak dapat dijangkau (DNS, TLS, atau jaringan).',
+      };
+    }
+  });

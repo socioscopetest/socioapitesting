@@ -28,3 +28,8 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Application architecture
+- Keep monitoring types and null-preserving display helpers in a browser-safe module; preserve upstream JSON separately from presentation.
+- Proxy SocioAPI through an authenticated TanStack server function using server-only secrets, not new Edge Functions, to match the project's runtime and protect API credits.
+- Keep illustrative preview data explicitly labeled and separate from live results and billing; never charge or imply a live request for previews.

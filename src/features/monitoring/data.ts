@@ -26,9 +26,14 @@ export const dateWIB = (value: unknown): string => {
 };
 export const getItems = (payload: Item): Item[] => Array.isArray(payload['data']) ? payload['data'].map(asRecord) : [];
 export const creditsUsed = (result: ApiResult): number | null => {
-  if (result.http_status === 200 && Array.isArray(result.payload['data']) && result.payload['data'].length === 0) return 0;
   const billing = asRecord(result.payload['billing']);
+  // Trust an explicit upstream charge, including 0. Empty data alone does not mean free:
+  // Search Profile may consume credits while returning no profiles.
   return numberValue(billing['credit_used'] ?? billing['credits_used']);
+};
+export const emptyResultsMessage = (payload: Item): string => {
+  const message = payload['message'];
+  return typeof message === 'string' && message.trim() ? message : 'Tidak ada data yang dikembalikan oleh SocioAPI.';
 };
 export function profileMetricValues(item: Item, platform: Platform) {
   const stats = asRecord(item['metrics']);

@@ -31,7 +31,7 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
         </div>
         {!profile && <time className="shrink-0 text-right text-[9px] text-muted-foreground">{dateWIB(item['published_at'])}</time>}
       </div>
-      <p className="post-text whitespace-pre-line">{display(profile ? item['bio'] : item['text'] ?? item['title'])}</p>
+      <p className="post-text whitespace-pre-line">{display(profile ? item['bio'] : item['title'] || item['text'])}</p>
       {!profile && images.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{images.slice(0, 4).map((media, i) => <img key={String(media['id'] ?? i)} src={String(media['original_url'])} alt={String(media['caption'] ?? `Post image ${i + 1}`)} loading="lazy" className="max-h-64 w-full rounded-md border border-border object-cover" />)}</div>}
       {!profile && videos.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{videos.map((media, i) => <a key={String(media['id'] ?? i)} href={String(media['original_url'])} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded border border-border px-3 py-2 text-[10px] text-primary"><ExternalLink size={12} />Buka video {i + 1}</a>)}</div>}
       {tags.length > 0 && <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">{tags.map((tag, i) => <span key={`${tag}-${i}`} className="hashtag">#{tag.replace(/^#/, '')}</span>)}</div>}

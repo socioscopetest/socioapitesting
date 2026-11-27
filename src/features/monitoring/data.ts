@@ -6,6 +6,7 @@ export const asRecord = (value: unknown): Item => value !== null && typeof value
 export const display = (value: unknown): string => value === null || value === undefined || value === '' ? 'N/A' : String(value);
 export const metric = (value: unknown): string => typeof value === 'number' ? new Intl.NumberFormat('en-US', { notation: value >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value) : display(value);
 export const numberValue = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
+export const latencyDisplay = (value: unknown): string => value === null || value === undefined ? 'N/A' : typeof value === 'number' || (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) ? `${value} ms` : display(value);
 export const dateWIB = (value: unknown): string => {
   if (typeof value !== 'string' && typeof value !== 'number') return 'N/A';
   const date = new Date(value);
@@ -13,7 +14,11 @@ export const dateWIB = (value: unknown): string => {
   return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(date) + ' WIB';
 };
 export const getItems = (payload: Item): Item[] => Array.isArray(payload['data']) ? payload['data'].map(asRecord) : [];
-export const creditsUsed = (result: ApiResult): number | null => result.http_status === 200 && Array.isArray(result.payload['data']) && result.payload['data'].length === 0 ? 0 : numberValue(asRecord(result.payload['billing'])['credits_used']);
+export const creditsUsed = (result: ApiResult): number | null => {
+  if (result.http_status === 200 && Array.isArray(result.payload['data']) && result.payload['data'].length === 0) return 0;
+  const billing = asRecord(result.payload['billing']);
+  return numberValue(billing['credit_used'] ?? billing['credits_used']);
+};
 export const httpError = (status: number): string => ({ 400: 'Parameter pencarian tidak valid. Periksa keyword, tanggal, dan halaman.', 401: 'Akses tidak terautentikasi. Periksa kunci SocioAPI atau masuk kembali.', 402: 'Kredit SocioAPI tidak mencukupi untuk pencarian ini.', 403: 'Akses ditolak. Akun Anda tidak memiliki izin untuk endpoint ini.', 429: 'Terlalu banyak permintaan. Silakan coba lagi sebentar lagi.', 503: 'Kunci SocioAPI belum dikonfigurasi.' }[status] ?? `Layanan SocioAPI tidak tersedia (HTTP ${status}). Coba kembali.`);
 export const responseError = (result: ApiResult): string => {
   const message = result.http_status === 403 && typeof result.payload['message'] === 'string' && /IP Whitelist|IP .*not whitelisted/i.test(result.payload['message']) ? 'SocioAPI menolak akses: IP belum diizinkan. Periksa whitelist IP pada akun SocioAPI Anda sebelum menjalankan pencarian.' : httpError(result.http_status);

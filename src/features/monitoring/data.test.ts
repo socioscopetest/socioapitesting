@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { display, metric, creditsUsed, dateWIB, buildSearchUrl, httpError, responseError } from './data';
+import { display, metric, creditsUsed, dateWIB, buildSearchUrl, httpError, latencyDisplay } from './data';
 describe('Strict monitoring rules', () => {
+  it('preserves upstream latency units without adding duplicate ms', () => { expect(latencyDisplay('14.203 ms')).toBe('14.203 ms'); expect(latencyDisplay(14.203)).toBe('14.203 ms'); expect(latencyDisplay(null)).toBe('N/A'); });
+  it('reads actual SocioAPI credit_used without rounding fractional charges', () => { expect(creditsUsed({ http_status: 200, payload: { data: [{}], billing: { credit_used: 0.1, remaining_credits: 2499.6 } } })).toBe(0.1); });
   it('displays null optional fields as N/A', () => { expect(display(null)).toBe('N/A'); });
   it('displays null metrics as N/A rather than zero', () => { expect(metric(null)).toBe('N/A'); expect(metric(0)).toBe('0'); });
   it('keeps engagement, views and reach separate', () => { const item = { engagement: 120, views: 340, reach: null }; expect([metric(item.engagement), metric(item.views), metric(item.reach)]).toEqual(['120', '340', 'N/A']); });

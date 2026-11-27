@@ -4,25 +4,47 @@ import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import type { OAuthProvider } from "@lovable.dev/cloud-auth-js";
 import { supabase } from "../supabase/client";
 
-const lovableAuth = createLovableAuth({
-  // Vercel does not provide Lovable hosting's relative /~oauth/initiate proxy.
-  // The hosted broker's public initiate endpoint is /initiate (not /~oauth/initiate).
-  oauthBrokerUrl: "https://oauth.lovable.app/initiate",
-});
+const LOVABLE_PROJECT_ID = "7a8d2998-5d38-43f9-a69a-d305ba0e049b";
 
 type SignInOptions = {
   redirect_uri?: string;
   extraParams?: Record<string, string>;
 };
 
+function getOAuthBrokerUrl(): string {
+  if (typeof window === "undefined") {
+    return "https://oauth.lovable.app/initiate";
+  }
+
+  // Lovable-hosted previews route OAuth through their same-origin proxy.
+  // External hosts (Vercel and local development) must call the public broker.
+  const host = window.location.hostname;
+  const isLovableHosted =
+    host === "lovable.app" ||
+    host.endsWith(".lovable.app") ||
+    host === "lovableproject.com" ||
+    host.endsWith(".lovableproject.com") ||
+    host === "lovableproject-dev.com" ||
+    host.endsWith(".lovableproject-dev.com");
+
+  return isLovableHosted
+    ? "/~oauth/initiate"
+    : "https://oauth.lovable.app/initiate";
+}
+
 export const lovable = {
   auth: {
     signInWithOAuth: async (provider: OAuthProvider, opts?: SignInOptions) => {
+      const lovableAuth = createLovableAuth({
+        oauthBrokerUrl: getOAuthBrokerUrl(),
+      });
+
       const result = await lovableAuth.signInWithOAuth(provider, {
         ...opts,
+        redirect_uri: opts?.redirect_uri ?? window.location.origin,
         extraParams: {
-          project_id: "7a8d2998-5d38-43f9-a69a-d305ba0e049b",
           ...opts?.extraParams,
+          project_id: LOVABLE_PROJECT_ID,
         },
       });
 
@@ -35,7 +57,8 @@ export const lovable = {
       }
 
       try {
-        await supabase.auth.setSession(result.tokens);
+        const { error } = await supabase.auth.setSession(result.tokens);
+        if (error) throw error;
       } catch (e) {
         return { error: e instanceof Error ? e : new Error(String(e)) };
       }

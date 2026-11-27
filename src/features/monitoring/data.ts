@@ -1,7 +1,7 @@
 export type Platform = 'tiktok' | 'instagram';
 export type Action = 'search_post' | 'search_profile';
 export type Item = Record<string, unknown>;
-export interface ApiResult { http_status: number; payload: Item }
+export interface ApiResult { http_status: number; outbound_ip?: string | null; payload: Item }
 export const asRecord = (value: unknown): Item => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Item : {};
 export const display = (value: unknown): string => value === null || value === undefined || value === '' ? 'N/A' : String(value);
 export const metric = (value: unknown): string => typeof value === 'number' ? new Intl.NumberFormat('en-US', { notation: value >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value) : display(value);
@@ -15,7 +15,10 @@ export const dateWIB = (value: unknown): string => {
 export const getItems = (payload: Item): Item[] => Array.isArray(payload['data']) ? payload['data'].map(asRecord) : [];
 export const creditsUsed = (result: ApiResult): number | null => result.http_status === 200 && Array.isArray(result.payload['data']) && result.payload['data'].length === 0 ? 0 : numberValue(asRecord(result.payload['billing'])['credits_used']);
 export const httpError = (status: number): string => ({ 400: 'Parameter pencarian tidak valid. Periksa keyword, tanggal, dan halaman.', 401: 'Akses tidak terautentikasi. Periksa kunci SocioAPI atau masuk kembali.', 402: 'Kredit SocioAPI tidak mencukupi untuk pencarian ini.', 403: 'Akses ditolak. Akun Anda tidak memiliki izin untuk endpoint ini.', 429: 'Terlalu banyak permintaan. Silakan coba lagi sebentar lagi.', 503: 'Kunci SocioAPI belum dikonfigurasi.' }[status] ?? `Layanan SocioAPI tidak tersedia (HTTP ${status}). Coba kembali.`);
-export const responseError = (result: ApiResult): string => result.http_status === 403 && typeof result.payload['message'] === 'string' && /IP Whitelist/i.test(result.payload['message']) ? 'SocioAPI menolak akses: whitelist IP belum dikonfigurasi. Atur whitelist IP pada akun SocioAPI Anda sebelum menjalankan pencarian.' : httpError(result.http_status);
+export const responseError = (result: ApiResult): string => {
+  const message = result.http_status === 403 && typeof result.payload['message'] === 'string' && /IP Whitelist|IP .*not whitelisted/i.test(result.payload['message']) ? 'SocioAPI menolak akses: IP belum diizinkan. Periksa whitelist IP pada akun SocioAPI Anda sebelum menjalankan pencarian.' : httpError(result.http_status);
+  return result.http_status === 403 ? `${message} Outbound IP: ${display(result.outbound_ip)}. IP ini terdeteksi oleh ipify dan dapat berbeda dari IP yang dilihat SocioAPI atau berubah setelah aplikasi dipublikasikan.` : message;
+};
 export function buildSearchUrl(base: string, platform: Platform, action: Action, params: Record<string, string>): URL {
   const url = new URL(action === 'search_post' ? `/api/v1/events/${platform}/search` : '/api/v1/senders/search', base);
   const allowed = action === 'search_post' ? ['keyword', 'start_date', 'end_date', 'sort_by', 'sort_order', 'page', 'cursor'] : ['username', 'name', 'page', 'size'];

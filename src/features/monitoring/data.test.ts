@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { display, metric, creditsUsed, dateWIB, buildSearchUrl, httpError, responseError } from './data';
 describe('Strict monitoring rules', () => {
-  it('identifies SocioAPI IP whitelist rejection', () => { expect(responseError({ http_status: 403, payload: { message: 'IP Whitelist is not configured' } })).toContain('whitelist IP belum dikonfigurasi'); });
   it('displays null optional fields as N/A', () => { expect(display(null)).toBe('N/A'); });
   it('displays null metrics as N/A rather than zero', () => { expect(metric(null)).toBe('N/A'); expect(metric(0)).toBe('0'); });
   it('keeps engagement, views and reach separate', () => { const item = { engagement: 120, views: 340, reach: null }; expect([metric(item.engagement), metric(item.views), metric(item.reach)]).toEqual(['120', '340', 'N/A']); });

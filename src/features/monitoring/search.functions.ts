@@ -80,10 +80,11 @@ export const checkSocioAPIHost = createServerFn({ method: 'GET' })
     const { detectOutboundIP } = await import('./outbound.server');
     const outbound_ip = await detectOutboundIP();
     try {
-      // Probe only the host root without Authorization. A 401/403/404 still
-      // proves the host answered; it does not verify the API key or endpoint.
+      // Probe the host root with a safe GET and no Authorization header.
+      // This avoids false HTTP 405 responses from servers that do not support HEAD.
+      // A 401/403/404 still proves the host answered; it does not verify the API key or endpoint.
       const response = await fetch(url.origin, {
-        method: 'HEAD',
+        method: 'GET',
         signal: AbortSignal.timeout(8000),
         redirect: 'manual',
       });

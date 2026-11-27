@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { asRecord, buildSearchUrl, creditsUsed, getItems, shouldSyncInstagramResult } from './data';
+import { asRecord, buildSearchUrl, creditsUsed, getItems } from './data';
 
 export const searchSocioAPI = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
@@ -21,18 +21,19 @@ export const searchSocioAPI = createServerFn({ method: 'POST' })
       const payloadJSON = JSON.stringify(payload);
       let synced_search_id: string | null = null;
       let sync_error = false;
-      if (shouldSyncInstagramResult(data.platform, response.status)) {
-        const { data: saved, error } = await context.supabase.from('instagram_searches').insert({
+      if (response.status === 200) {
+        const { data: saved, error } = await context.supabase.from('monitoring_searches').insert({
           user_id: context.userId,
+          platform: data.platform,
           action: data.action,
-          params_json: JSON.stringify(data.params),
-          response_json: payloadJSON,
+          params_json: data.params,
+          response_json: payload,
           http_status: response.status,
           credits_used: creditsUsed({ http_status: response.status, payload }),
           result_count: getItems(payload).length,
         }).select('id').single();
         if (error) {
-          console.error('Unable to save Instagram search history:', error.message);
+          console.error('Unable to save monitoring search history:', error.message);
           sync_error = true;
         } else {
           synced_search_id = saved.id;

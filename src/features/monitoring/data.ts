@@ -3,6 +3,7 @@ export type Action = 'search_post' | 'search_profile';
 export type Item = Record<string, unknown>;
 export interface ApiResult { http_status: number; outbound_ip?: string | null; payload: Item }
 export interface SavedInstagramSearch {
+  platform: Platform;
   id: string;
   action: Action;
   params_json: string;

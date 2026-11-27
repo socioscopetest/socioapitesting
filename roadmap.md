@@ -1,4 +1,7 @@
 # SocioScope
+- [ ] Review the main-branch monitoring history integration, generated types, dashboard JSX, and TV/Radio request contracts.
+- [ ] Fix only verified type, JSX, lint, or build failures without changing platform integrations.
+- [ ] Run lint, unit tests, typecheck/build validation, verify dynamic endpoint labels, and commit the fixes.
 - [x] Activate Instagram setup with private, account-synced search storage.
 - [x] Add a saved Instagram history view that reloads results without another SocioAPI request.
 - [x] Test persistence rules and verify a signed-in Instagram search, saved-result reload, and desktop/mobile UI. Live @instagram profile search returned HTTP 200; reopening saved data triggered zero server requests and displayed 686.6M followers, 307 following, 0 favourites, and 8,617 posts. All 20 tests passed; mobile had no horizontal overflow or console errors.

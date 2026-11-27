@@ -8,6 +8,13 @@
       "when": 1795751182358,
       "tag": "0000_create_instagram_search_history",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795767239793,
+      "tag": "0001_unify_monitoring_search_history",
+      "breakpoints": true
     }
   ]
 }

@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      monitoring_searches: {
+        Row: {
+          action: string
+          created_at: string
+          credits_used: number | null
+          http_status: number
+          id: string
+          params_json: Json
+          platform: string
+          response_json: Json
+          result_count: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          credits_used?: number | null
+          http_status: number
+          id?: string
+          params_json?: Json
+          platform: string
+          response_json: Json
+          result_count?: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          credits_used?: number | null
+          http_status?: number
+          id?: string
+          params_json?: Json
+          platform?: string
+          response_json?: Json
+          result_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

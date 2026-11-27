@@ -16,6 +16,7 @@ export const listInstagramSearches = createServerFn({ method: 'GET' })
     }
     return (data ?? []).map(row => ({
       id: row.id,
+      platform: 'instagram',
       action: row.action === 'search_profile' ? 'search_profile' : 'search_post',
       params_json: row.params_json,
       response_json: row.response_json,

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type AuthMode = 'signin' | 'signup' | 'reset';
+type AuthMode = 'signin' | 'signup' | 'reset' | 'update';
 
 type AuthDialogProps = {
   open: boolean;
@@ -26,6 +26,20 @@ export function AuthDialog({ open, onOpenChange, user, onLovableSignIn }: AuthDi
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('update');
+        onOpenChange(true);
+      }
+    });
+    if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+      setMode('update');
+      onOpenChange(true);
+    }
+    return () => subscription.unsubscribe();
+  }, [onOpenChange]);
 
   useEffect(() => {
     let active = true;
@@ -58,7 +72,14 @@ export function AuthDialog({ open, onOpenChange, user, onLovableSignIn }: AuthDi
     event.preventDefault();
     setBusy(true);
     try {
-      if (mode === 'signup') {
+      if (mode === 'update') {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        toast.success('Password berhasil diperbarui. Silakan masuk kembali.');
+        setPassword('');
+        setMode('signin');
+        onOpenChange(false);
+      } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -164,14 +185,14 @@ export function AuthDialog({ open, onOpenChange, user, onLovableSignIn }: AuthDi
             </div>}
             <form onSubmit={submit} className="space-y-3 pt-1">
               {mode === 'signup' && <label className="block space-y-1.5 text-xs font-medium">Nama lengkap<Input value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} maxLength={100} autoComplete="name" placeholder="Nama Anda" /></label>}
-              <label className="block space-y-1.5 text-xs font-medium">Email<Input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nama@email.com" /></label>
+              {mode !== 'update' && <label className="block space-y-1.5 text-xs font-medium">Email<Input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nama@email.com" /></label>}
               {mode !== 'reset' && <label className="block space-y-1.5 text-xs font-medium">Password
                 <span className="relative block"><Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} placeholder="Minimal 8 karakter" className="pr-11" /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} onClick={() => setShowPassword(value => !value)}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></span>
               </label>}
-              <Button type="submit" className="w-full" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : mode === 'reset' ? <Mail size={16} /> : null}{mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : 'Masuk'}</Button>
+              <Button type="submit" className="w-full" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : mode === 'reset' ? <Mail size={16} /> : null}{mode === 'signup' ? 'Buat akun' : mode === 'reset' ? 'Kirim tautan reset' : mode === 'update' ? 'Simpan password baru' : 'Masuk'}</Button>
             </form>
             {mode === 'signin' && <button type="button" className="w-full text-center text-xs text-primary hover:underline" onClick={() => setMode('reset')}>Lupa password?</button>}
-            {mode === 'reset' && <button type="button" className="w-full text-center text-xs text-primary hover:underline" onClick={() => setMode('signin')}>Kembali ke halaman masuk</button>}
+            {(mode === 'reset' || mode === 'update') && <button type="button" className="w-full text-center text-xs text-primary hover:underline" onClick={() => setMode('signin')}>Kembali ke halaman masuk</button>}
             {mode === 'signin' && <>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground"><span className="h-px flex-1 bg-border" />ATAU<span className="h-px flex-1 bg-border" /></div>
               <Button type="button" variant="outline" className="w-full" onClick={() => void onLovableSignIn()} disabled={busy}><LovableMark />Lanjutkan dengan Lovable</Button>

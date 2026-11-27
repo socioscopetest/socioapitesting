@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
-import { searchSocioAPI } from '@/features/monitoring/search.functions';
+import { checkSocioAPIHost, searchSocioAPI } from '@/features/monitoring/search.functions';
 import { listMonitoringSearches } from '@/features/monitoring/history.functions';
 import { ResultCard } from '@/features/monitoring/results';
 import { AuthDialog } from '@/features/auth/auth-dialog';
@@ -55,6 +55,24 @@ function Index() {
   const [syncedSearchId, setSyncedSearchId] = useState<string | null>(null);
   const [viewingSaved, setViewingSaved] = useState(false);
   const searchAPI = useServerFn(searchSocioAPI);
+  const checkAPIHost = useServerFn(checkSocioAPIHost);
+  const [connectionCheck, setConnectionCheck] = useState<{reachable:boolean;key_configured:boolean;host_status:number|null;outbound_ip:string|null;message:string}|null>(null);
+  const [checkingConnection, setCheckingConnection] = useState(false);
+  const connectionStatusLabel = connectionCheck ? (connectionCheck.reachable ? 'Host reachable' : 'Host unreachable') : null;
+  async function runConnectionCheck() {
+    if (!user) { setAuthOpen(true); return; }
+    setCheckingConnection(true);
+    try {
+      const result = await checkAPIHost();
+      setConnectionCheck(result);
+      if (result.reachable && result.key_configured) toast.success('Host SocioAPI terjangkau; API key terdeteksi di server. Endpoint dan validitas key belum diuji.');
+      else if (result.reachable) toast.warning('Host terjangkau, tetapi API key belum terkonfigurasi.');
+      else toast.error(result.message);
+    } catch (cause) {
+      console.error('SocioAPI host check failed:', cause);
+      toast.error('Pemeriksaan koneksi gagal. Periksa sesi login dan konfigurasi server.');
+    } finally { setCheckingConnection(false); }
+  }
   const listSavedSearches = useServerFn(listMonitoringSearches);
   const refreshHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -158,7 +176,7 @@ function Index() {
     <div className="app-main">
       <header className="topbar"><div className="flex items-center gap-2.5 text-[11px]"><span className="text-muted-foreground">Workspace</span><ChevronRight size={12} className="text-muted-foreground" /><span className="font-semibold">Social Monitoring</span></div><div className="flex items-center gap-4"><span className="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:flex"><ShieldCheck size={13} className="text-primary" /> Secure connection</span><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Notifikasi" title="Notifikasi" onClick={() => setNotifications(true)}><Bell /></Button><div className="h-5 border-l border-border" /><Button variant="ghost" size="icon" className="rounded-full bg-secondary text-[10px]" aria-label="Akun workspace" onClick={() => setAuthOpen(true)}>{user ? user.slice(0, 2).toUpperCase() : 'SC'}</Button></div></header>
       <main className="dashboard" id="dashboard">
-        <div className="flex flex-wrap items-center justify-between gap-4"><div><div className="mb-1.5 flex items-center gap-2"><h1 className="page-heading">SocioScope</h1><span className="mt-1 rounded border border-border bg-card px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">MONITORING</span></div><h2 className="text-[12px] text-muted-foreground">Social Media Monitoring <span className="px-1.5 text-border">/</span> Multi-platform intelligence</h2></div><div className="credit-badge"><Coins size={17} /><span className="text-[11px]">Credits:</span><strong className="font-mono text-[17px]">{credits === null ? 'N/A' : credits.toLocaleString('en-US')}</strong><span className="ml-2 border-l border-primary/20 pl-3"><Zap size={13} /></span></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-4"><div><div className="mb-1.5 flex items-center gap-2"><h1 className="page-heading">SocioScope</h1><span className="mt-1 rounded border border-border bg-card px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">MONITORING</span></div><h2 className="text-[12px] text-muted-foreground">Social Media Monitoring <span className="px-1.5 text-border">/</span> Multi-platform intelligence</h2></div><div className="flex flex-wrap items-center gap-2"><div className="credit-badge"><Coins size={17} /><span className="text-[11px]">Credits:</span><strong className="font-mono text-[17px]">{credits === null ? 'N/A' : credits.toLocaleString('en-US')}</strong><span className="ml-2 border-l border-primary/20 pl-3"><Zap size={13} /></span></div><Button variant="outline" size="sm" onClick={runConnectionCheck} disabled={checkingConnection || loading} className="h-9 gap-2 text-[10px]"><Activity size={14} />{checkingConnection ? 'Memeriksa…' : 'Uji koneksi'}</Button></div></div>
         <section className="mt-8" aria-label="Platform coverage"><div className="flex items-center gap-2"><Globe2 size={12} className="text-muted-foreground" /><h2 className="section-caption">Platform coverage</h2><span className="text-[9px] text-muted-foreground">9 connected sources</span></div><div className="platform-row">
           <Button variant="ghost" className={`platform-button ${platform === 'tiktok' ? 'selected' : ''}`} onClick={() => changeMode('tiktok', action)} disabled={loading}><Music2 /><span className="text-[12px] font-bold">TikTok</span><span className={`ml-2 flex items-center gap-1.5 text-[9px] ${platform === 'tiktok' ? 'text-primary' : 'text-muted-foreground'}`}><span className="status-dot" /> Active</span></Button>
           <Button variant="ghost" className={`platform-button ${platform === 'instagram' ? 'selected' : ''}`} onClick={() => changeMode('instagram', action)} disabled={loading}><Instagram className="text-instagram" /><span className="text-[12px] font-bold">Instagram</span><span className={`ml-2 flex items-center gap-1.5 text-[9px] ${platform === 'instagram' ? 'text-primary' : 'text-muted-foreground'}`}><span className="status-dot" /> Active</span></Button>

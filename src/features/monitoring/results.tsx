@@ -25,7 +25,7 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
   const url = candidate && /^https:\/\//.test(candidate) ? candidate : undefined;
   const newsDomain = asRecord(item['domain'])['domain_name'];
   const broadcastDate = typeof item['time_start'] === 'number' ? item['time_start'] * 1000 : item['date'];
-  const mediaPath = typeof item['file_path'] === 'string' && /^https:\\/\\//.test(item['file_path']) ? item['file_path'] : undefined;
+  const mediaPath = typeof item['file_path'] === 'string' && /^https:\/\//.test(item['file_path']) ? item['file_path'] : undefined;
   return <article className="post-card">
     <div className="post-body">
       <div className="flex items-start justify-between gap-3">

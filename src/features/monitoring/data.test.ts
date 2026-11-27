@@ -28,7 +28,7 @@ describe('Strict monitoring rules', () => {
     const item = getItems(previewResult('radio', 'search_post').payload)[0];
     expect(item['source_type']).toBe('radio'); expect(item['source_name']).toBe('trijaya_104.6_fm');
     expect(item['file_path']).toBe(''); expect(item['text_segments']).toContain('00:00:00');
-    expect(asRecord(previewResult('tv', 'search_post').payload)['pagination']).toBeUndefined();
+    expect(asRecord(asRecord(previewResult('tv', 'search_post').payload)['pagination'])['current_page']).toBe(1);
   });
   it('routes post search to selected platform', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_post', { keyword: 'kopi', page: '2' }).href).toBe('https://api.socioapi.com/api/v1/events/instagram/search?keyword=kopi&page=2'); });
   it('routes profile search with platform filter', () => { expect(buildSearchUrl('https://api.socioapi.com', 'tiktok', 'search_profile', { username: 'nadia' }).href).toBe('https://api.socioapi.com/api/v1/senders/search?username=nadia&platform=tiktok'); });

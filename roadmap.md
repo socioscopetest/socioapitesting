@@ -1,4 +1,7 @@
 # SocioScope
+- [x] Activate Instagram setup with private, account-synced search storage.
+- [x] Add a saved Instagram history view that reloads results without another SocioAPI request.
+- [x] Test persistence rules and verify a signed-in Instagram search, saved-result reload, and desktop/mobile UI. Live @instagram profile search returned HTTP 200; reopening saved data triggered zero server requests and displayed 686.6M followers, 307 following, 0 favourites, and 8,617 posts. All 20 tests passed; mobile had no horizontal overflow or console errors.
 - [x] Detect outbound IP before SocioAPI requests, expose it in 403 errors and JSON, and run one signed-in search as a temporary test user. ipify returned 34.34.100.172; SocioAPI reported 172.19.0.1, so adding the ipify IP alone is not proven to resolve the whitelist rejection.
 - [x] Build dark monitoring dashboard with TikTok and Instagram post/profile searches.
 - [x] Implement secure SocioAPI proxy and store private credential.

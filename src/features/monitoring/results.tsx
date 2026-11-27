@@ -1,6 +1,6 @@
 import { Activity, Heart, MessageCircle, Share2, Eye, Radio, Code2, ExternalLink, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { display, metric, dateWIB, asRecord, type Item, type Platform, type Action } from './data';
+import { display, metric, dateWIB, asRecord, profileMetricValues, type Item, type Platform, type Action } from './data';
 
 export function ResultCard({ item, index, platform, action, onInspect }: { item: Item; index: number; platform: Platform; action: Action; onInspect: (item: Item) => void }) {
   const profile = action === 'search_profile';
@@ -9,9 +9,10 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
   const username = profile ? item['username'] : item['author_username'] ?? author['username'];
   const initials = display(name).split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
   const stats = asRecord(item['metrics']);
+  const profileValues = profileMetricValues(item, platform);
   const tags = Array.isArray(item['hashtags']) ? item['hashtags'].map(String) : [];
   const metricValues = profile ? [
-    ['Followers', item['followers'], Eye], ['Following', item['following'], Radio], ['Likes/Fav', item['likes'] ?? item['favorites'], Heart], [platform === 'tiktok' ? 'Videos' : 'Posts', item[platform === 'tiktok' ? 'videos' : 'posts'], Activity],
+    ['Followers', profileValues.followers, Eye], ['Following', profileValues.following, Radio], ['Likes/Fav', profileValues.likes, Heart], [platform === 'tiktok' ? 'Videos' : 'Posts', profileValues.posts, Activity],
   ] as const : [
     ['Engage', item['engagement'] ?? stats['engagement'], Activity], ['Likes', item['likes'] ?? stats['likes'], Heart], ['Comments', item['comments'] ?? stats['comments'], MessageCircle], ['Shares', item['shares'] ?? stats['shares'], Share2], ['Views', item['views'] ?? stats['views'], Eye], ['Reach', item['reach'] ?? stats['reach'], Radio],
   ] as const;

@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      instagram_searches: {
+        Row: {
+          action: string
+          created_at: string
+          credits_used: number | null
+          http_status: number
+          id: string
+          params_json: string
+          response_json: string
+          result_count: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          credits_used?: number | null
+          http_status: number
+          id?: string
+          params_json: string
+          response_json: string
+          result_count?: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          credits_used?: number | null
+          http_status?: number
+          id?: string
+          params_json?: string
+          response_json?: string
+          result_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

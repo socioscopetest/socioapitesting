@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Activity, ArrowUpRight, ArrowRight, ArrowLeft, Bell, ChevronRight, CircleHelp, Code2, Coins, Copy, FileText, Globe2, Instagram, LayoutDashboard, Loader2, Music2, Search, ShieldCheck, UserRound, Users, Zap, Clock3, Layers, Hash, Radio, Youtube, Facebook, AtSign, Newspaper, CheckCircle2, LogOut } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Activity, ArrowUpRight, ArrowRight, ArrowLeft, Bell, ChevronRight, CircleHelp, Code2, Coins, Copy, Database, FileText, Globe2, History, Instagram, LayoutDashboard, Loader2, Music2, RefreshCw, Search, ShieldCheck, UserRound, Users, Zap, Clock3, Layers, Hash, Radio, Youtube, Facebook, AtSign, Newspaper, CheckCircle2, LogOut } from 'lucide-react';
 import { LovableMark } from '@lovable.dev/cloud-auth-js/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
 import { searchSocioAPI } from '@/features/monitoring/search.functions';
+import { listInstagramSearches } from '@/features/monitoring/instagram.functions';
 import { ResultCard } from '@/features/monitoring/results';
-import { asRecord, display, getItems, numberValue, creditsUsed, previewResult, responseError, latencyDisplay, type Platform, type Action, type ApiResult, type Item } from '@/features/monitoring/data';
+import { asRecord, display, getItems, numberValue, creditsUsed, dateWIB, previewResult, responseError, latencyDisplay, type Platform, type Action, type ApiResult, type Item, type SavedInstagramSearch } from '@/features/monitoring/data';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -25,6 +26,10 @@ export const Route = createFileRoute('/')({
 });
 
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="min-w-0"><span className="field-label">{label}</span>{children}</label>; }
+function savedQuery(saved: SavedInstagramSearch): string {
+  try { const params = asRecord(JSON.parse(saved.params_json)); return display(params['keyword'] ?? params['username'] ?? params['name']); }
+  catch { return 'N/A'; }
+}
 function Index() {
   const [platform, setPlatform] = useState<Platform>('tiktok');
   const [action, setAction] = useState<Action>('search_post');
@@ -42,13 +47,29 @@ function Index() {
   const [help, setHelp] = useState(false); const [notifications, setNotifications] = useState(false);
   const [user, setUser] = useState<string | null>(null); const [authOpen, setAuthOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [savedSearches, setSavedSearches] = useState<SavedInstagramSearch[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [syncedSearchId, setSyncedSearchId] = useState<string | null>(null);
+  const [viewingSaved, setViewingSaved] = useState(false);
   const searchAPI = useServerFn(searchSocioAPI);
+  const listSavedSearches = useServerFn(listInstagramSearches);
+  const refreshHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try { setSavedSearches(await listSavedSearches()); }
+    catch { toast.error('Riwayat Instagram belum dapat dimuat. Silakan coba lagi.'); }
+    finally { setHistoryLoading(false); }
+  }, [listSavedSearches]);
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => { if (mounted) setUser(data.session?.user.email ?? data.session?.user.id ?? null); });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => { setUser(session?.user.email ?? session?.user.id ?? null); });
     return () => { mounted = false; data.subscription.unsubscribe(); };
   }, []);
+  useEffect(() => {
+    if (user && platform === 'instagram') void refreshHistory();
+    if (!user) setSavedSearches([]);
+  }, [user, platform, refreshHistory]);
   const platformName = platform === 'tiktok' ? 'TikTok' : 'Instagram';
   const post = action === 'search_post';
   const pagination = asRecord(result.payload['pagination']);
@@ -60,12 +81,34 @@ function Index() {
   const used = creditsUsed(result);
   function changeMode(p: Platform, a: Action) {
     setPlatform(p); setAction(a); setPage(1); setCursor(''); setFilter(''); setError(''); setRaw(false);
-    setPreview(true); setResult(previewResult(p, a));
+    setPreview(true); setResult(previewResult(p, a)); setSyncedSearchId(null); setViewingSaved(false);
   }
   async function signIn() {
     const response = await lovable.auth.signInWithOAuth('lovable', { redirect_uri: window.location.origin });
     if (response.error) toast.error('Tidak dapat masuk. Silakan coba kembali.');
     else if (!response.redirected) { setAuthOpen(false); toast.success('Berhasil masuk. Anda dapat menjalankan pencarian.'); }
+  }
+  function openSavedSearch(saved: SavedInstagramSearch) {
+    try {
+      const params = asRecord(JSON.parse(saved.params_json));
+      const payload = asRecord(JSON.parse(saved.response_json));
+      const savedPage = Number(params['page']);
+      const savedSize = Number(params['size']);
+      setPlatform('instagram'); setAction(saved.action); setResult({ http_status: saved.http_status, payload });
+      setPreview(false); setViewingSaved(true); setSyncedSearchId(saved.id); setError(''); setRaw(false); setFilter(''); setHistoryOpen(false);
+      setKeyword(typeof params['keyword'] === 'string' ? params['keyword'] : '');
+      setStart(typeof params['start_date'] === 'string' ? params['start_date'] : '');
+      setEnd(typeof params['end_date'] === 'string' ? params['end_date'] : '');
+      setSortBy(typeof params['sort_by'] === 'string' ? params['sort_by'] : 'time');
+      setSortOrder(typeof params['sort_order'] === 'string' ? params['sort_order'] : 'desc');
+      setUsername(typeof params['username'] === 'string' ? params['username'] : '');
+      setName(typeof params['name'] === 'string' ? params['name'] : '');
+      setCursor(typeof params['cursor'] === 'string' ? params['cursor'] : '');
+      setPage(Number.isFinite(savedPage) && savedPage > 0 ? savedPage : 1);
+      setSize(Number.isFinite(savedSize) && savedSize > 0 ? Math.min(100, savedSize) : 10);
+      document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
+      toast.success('Hasil tersimpan dibuka · 0 kredit baru');
+    } catch { toast.error('Data tersimpan tidak dapat dibaca.'); }
   }
   async function runSearch(targetPage = page, targetCursor = cursor) {
     if (post && !keyword.trim()) { setError('Keyword / Hashtag wajib diisi.'); return; }
@@ -77,13 +120,18 @@ function Index() {
       const params = post ? { keyword, start_date: start, end_date: end, sort_by: sortBy, sort_order: sortOrder, page: String(targetPage), cursor: targetCursor } : { username, name, page: String(targetPage), size: String(size) };
       const wire = await searchAPI({ data: { platform, action, params } });
       const response: ApiResult = { http_status: wire.http_status, outbound_ip: wire.outbound_ip, payload: asRecord(JSON.parse(wire.payloadJSON)) };
-      setResult(response); setPreview(false); setPage(targetPage); setCursor(targetCursor);
+      setResult(response); setPreview(false); setPage(targetPage); setCursor(targetCursor); setSyncedSearchId(wire.synced_search_id); setViewingSaved(false);
       const remaining = numberValue(asRecord(response.payload['billing'])['remaining_credits']);
       if (remaining !== null) setCredits(remaining);
       if (response.http_status !== 200) setError(responseError(response));
       else {
         if (!post && username.trim()) setHistory(old => ({ ...old, [platform]: [username.trim(), ...old[platform].filter(u => u !== username.trim())].slice(0, 5) }));
-        toast.success(`${getItems(response.payload).length} ${post ? 'postingan' : 'profil'} diterima`);
+        const count = getItems(response.payload).length;
+        if (wire.sync_error) toast.warning(`${count} ${post ? 'postingan' : 'profil'} diterima, tetapi riwayat belum tersimpan.`);
+        else if (platform === 'instagram' && wire.synced_search_id) {
+          await refreshHistory();
+          toast.success(`${count} ${post ? 'postingan' : 'profil'} diterima dan tersimpan`);
+        } else toast.success(`${count} ${post ? 'postingan' : 'profil'} diterima`);
       }
     } catch { setError('Pencarian gagal. Periksa koneksi atau masuk kembali, lalu coba lagi.'); }
     finally { setLoading(false); }
@@ -104,10 +152,11 @@ function Index() {
         <div className="flex flex-wrap items-center justify-between gap-4"><div><div className="mb-1.5 flex items-center gap-2"><h1 className="page-heading">SocioScope</h1><span className="mt-1 rounded border border-border bg-card px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">MONITORING</span></div><h2 className="text-[12px] text-muted-foreground">Social Media Monitoring <span className="px-1.5 text-border">/</span> Multi-platform intelligence</h2></div><div className="credit-badge"><Coins size={17} /><span className="text-[11px]">Credits:</span><strong className="font-mono text-[17px]">{credits === null ? 'N/A' : credits.toLocaleString('en-US')}</strong><span className="ml-2 border-l border-primary/20 pl-3"><Zap size={13} /></span></div></div>
         <section className="mt-8" aria-label="Platform coverage"><div className="flex items-center gap-2"><Globe2 size={12} className="text-muted-foreground" /><h2 className="section-caption">Platform coverage</h2><span className="text-[9px] text-muted-foreground">2 connected platforms</span></div><div className="platform-row">
           <Button variant="ghost" className={`platform-button ${platform === 'tiktok' ? 'selected' : ''}`} onClick={() => changeMode('tiktok', action)} disabled={loading}><Music2 /><span className="text-[12px] font-bold">TikTok</span><span className={`ml-2 flex items-center gap-1.5 text-[9px] ${platform === 'tiktok' ? 'text-primary' : 'text-muted-foreground'}`}><span className="status-dot" /> Step 1 • Active</span></Button>
-          <Button variant="ghost" className={`platform-button ${platform === 'instagram' ? 'selected' : ''}`} onClick={() => changeMode('instagram', action)} disabled={loading}><Instagram className="text-instagram" /><span className="text-[12px] font-bold">Instagram</span><span className="ml-2 text-[9px] text-muted-foreground">Step 2 • Ready</span></Button>
+          <Button variant="ghost" className={`platform-button ${platform === 'instagram' ? 'selected' : ''}`} onClick={() => changeMode('instagram', action)} disabled={loading}><Instagram className="text-instagram" /><span className="text-[12px] font-bold">Instagram</span><span className={`ml-2 flex items-center gap-1.5 text-[9px] ${platform === 'instagram' ? 'text-primary' : 'text-muted-foreground'}`}><span className="status-dot" /> Step 2 • Active</span></Button>
           <div className="mx-1 hidden h-6 border-l border-border xl:block" />
           {[[AtSign, 'X / Twitter'], [Facebook, 'Facebook'], [Youtube, 'YouTube'], [AtSign, 'Threads'], [Newspaper, 'News'], [Radio, 'TV & Radio']].map(([Icon, text]) => { const Symbol = Icon as typeof AtSign; return <span key={String(text)} className="flex items-center gap-1.5 rounded border border-border/70 px-2.5 py-2 text-[10px] text-muted-foreground/65"><Symbol size={12} />{String(text)}</span>; })}
         </div></section>
+        {platform === 'instagram' && <section aria-label="Instagram sync status" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/20 bg-success-soft px-4 py-3"><div className="flex min-w-0 items-center gap-3"><Database size={17} className="shrink-0 text-primary" /><div><p className="text-[11px] font-semibold text-primary">Instagram setup active · SocioAPI + database synced</p><p className="mt-1 text-[10px] text-muted-foreground">{viewingSaved ? 'Anda sedang melihat hasil tersimpan; tidak ada permintaan API atau kredit baru.' : syncedSearchId ? 'Hasil terakhir tersimpan di akun Anda dan dapat dibuka kembali.' : 'Pencarian berhasil disimpan otomatis ke akun Anda.'}</p></div></div><Button variant="outline" size="sm" className="text-[10px]" onClick={() => setHistoryOpen(true)}><History />Saved Instagram<span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[9px]">{savedSearches.length}</span></Button></section>}
         <section className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2" aria-label="Search endpoints">
           <Button variant="ghost" className={`endpoint-card ${post ? 'selected' : ''}`} disabled={loading} onClick={() => changeMode(platform, 'search_post')}><span className="endpoint-icon"><FileText /></span><span className="ml-1 flex-1"><span className="block text-[13px] font-bold">1. {platformName} Search Post API</span><span className="mt-1.5 block text-[10px] text-muted-foreground">Telusuri postingan berdasarkan keyword atau hashtag</span></span>{post ? <CheckCircle2 className="text-primary" /> : <ArrowUpRight className="text-muted-foreground" />}</Button>
           <Button variant="ghost" className={`endpoint-card ${!post ? 'selected' : ''}`} disabled={loading} onClick={() => changeMode(platform, 'search_profile')}><span className="endpoint-icon"><UserRound /></span><span className="ml-1 flex-1"><span className="block text-[13px] font-bold">2. {platformName} Search Profile API</span><span className="mt-1.5 block text-[10px] text-muted-foreground">Temukan profil dan statistik akun media sosial</span></span>{!post ? <CheckCircle2 className="text-primary" /> : <ArrowUpRight className="text-muted-foreground" />}</Button>
@@ -120,10 +169,10 @@ function Index() {
           <div className="kpi-card"><div className="flex justify-between gap-2 text-[10px] text-muted-foreground"><span>Total {post ? 'Postingan' : 'Profil'} Ditemukan</span><FileText size={14} /></div><div className="kpi-number">{display(pagination['total_items'])}</div><p className="mt-2 text-[9px] text-muted-foreground">{post ? 'Postingan' : 'Profil'} dari hasil pencarian</p></div>
           <div className="kpi-card"><div className="flex justify-between gap-2 text-[10px] text-muted-foreground"><span>Total Halaman</span><Layers size={14} /></div><div className="kpi-number">{display(pagination['current_page'])}<span className="ml-2 text-[11px] font-normal text-muted-foreground">current page</span></div><p className="mt-2 text-[9px] text-muted-foreground">{display(pagination['page_size'])} items per page</p></div>
           <div className="kpi-card"><div className="flex justify-between gap-2 text-[10px] text-muted-foreground"><span>Total Seluruh Halaman</span><Copy size={14} /></div><div className="kpi-number">{display(pagination['total_pages'])}</div><p className="mt-2 text-[9px] text-muted-foreground">Halaman tersedia</p></div>
-          <div className="kpi-card"><div className="flex justify-between gap-2 text-[10px] text-muted-foreground"><span>Status HTTP & Latensi</span><Activity size={14} /></div><div className={`mt-4 flex items-center gap-2 text-[22px] font-semibold ${result.http_status === 200 ? 'text-primary' : 'text-destructive'}`}><span className="status-dot" />{preview ? 'Preview' : `${result.http_status} ${result.http_status === 200 ? 'OK' : 'Error'}`}</div><p className="mt-2 flex items-center gap-1.5 text-[9px] text-muted-foreground"><Clock3 size={10} />{latencyDisplay(asRecord(result.payload['time'])['value'])}<span className="mx-1">·</span>{display(used)} kredit terpakai</p></div>
+          <div className="kpi-card"><div className="flex justify-between gap-2 text-[10px] text-muted-foreground"><span>Status HTTP & Latensi</span><Activity size={14} /></div><div className={`mt-4 flex items-center gap-2 text-[22px] font-semibold ${result.http_status === 200 ? 'text-primary' : 'text-destructive'}`}><span className="status-dot" />{preview ? 'Preview' : viewingSaved ? 'Saved' : `${result.http_status} ${result.http_status === 200 ? 'OK' : 'Error'}`}</div><p className="mt-2 flex items-center gap-1.5 text-[9px] text-muted-foreground"><Clock3 size={10} />{latencyDisplay(asRecord(result.payload['time'])['value'])}<span className="mx-1">·</span>{viewingSaved ? `0 kredit baru · ${display(used)} kredit awal` : `${display(used)} kredit terpakai`}</p></div>
         </section>
         <section className="mt-8" id="results" aria-label="Hasil pencarian"><div className="results-heading"><div className="view-tabs"><Button variant="ghost" className={`view-tab ${!raw ? 'selected' : ''}`} onClick={() => setRaw(false)}><FileText />{post ? 'Postingan' : 'Profile'} {platformName}<span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">{items.length}</span></Button><Button variant="ghost" className={`view-tab ${raw ? 'selected' : ''}`} onClick={() => setRaw(true)}><Code2 /><span className="hidden sm:inline">Raw JSON Response</span><span className="sm:hidden">JSON</span></Button></div><div className="flex items-center gap-3"><div className="relative"><Search size={12} className="absolute left-2.5 top-2.5 text-muted-foreground" /><Input aria-label="Search results" className="h-8 w-[140px] bg-card pl-8 text-[10px] lg:w-[190px]" placeholder="Search results..." value={filter} onChange={e => setFilter(e.target.value)} /></div><Button variant="outline" size="sm" className="bg-card text-[10px]" onClick={() => copyJSON()}><Copy />Copy JSON</Button></div></div>
-          <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-2"><p className="text-[10px] text-muted-foreground">Menampilkan <span className="font-semibold text-foreground">{filtered.length}</span> dari {display(pagination['total_items'])} {post ? 'postingan' : 'profil'}{post && <> untuk <span className="font-semibold text-foreground">“{keyword}”</span></>}</p><span className="flex items-center gap-1.5 text-[9px] text-muted-foreground">{preview ? <><span className="status-dot text-instagram" />Data contoh · 0 kredit</> : <><span className="status-dot text-primary" />Respons SocioAPI</>}</span></div>
+          <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-2"><p className="text-[10px] text-muted-foreground">Menampilkan <span className="font-semibold text-foreground">{filtered.length}</span> dari {display(pagination['total_items'])} {post ? 'postingan' : 'profil'}{post && <> untuk <span className="font-semibold text-foreground">“{keyword}”</span></>}</p><span className="flex items-center gap-1.5 text-[9px] text-muted-foreground">{preview ? <><span className="status-dot text-instagram" />Data contoh · 0 kredit</> : viewingSaved ? <><Database size={11} className="text-primary" />Data tersimpan · 0 kredit baru</> : <><span className="status-dot text-primary" />Respons SocioAPI{platform === 'instagram' && syncedSearchId ? ' · Tersimpan' : ''}</>}</span></div>
           {loading ? <div role="status" className="empty-state"><Loader2 className="mx-auto mb-4 animate-spin text-primary" />Mencari {post ? 'postingan' : 'profil'} {platformName}…</div> : raw ? <pre className="raw-json">{JSON.stringify(preview ? result.payload : result, null, 2)}</pre> : filtered.length > 0 ? <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{filtered.map((item, i) => <ResultCard key={`${display(item['original_id'])}-${i}`} item={item} index={i} platform={platform} action={action} onInspect={setInspect} />)}</div> : <div className="empty-state"><Search className="mx-auto mb-3 text-muted-foreground" /><h3 className="text-sm font-semibold">{error ? 'Pencarian belum berhasil' : 'Tidak ada hasil ditemukan'}</h3><p className="mt-2 text-xs text-muted-foreground">{error ? 'Periksa pesan di atas dan coba kembali.' : filter ? 'Coba kata lain pada filter pencarian.' : 'Coba keyword atau akun lain. Hasil kosong tidak menggunakan kredit.'}</p></div>}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><span className="text-[10px] text-muted-foreground">Page <span className="text-foreground">{currentPage}</span> of {display(totalPages)}</span><div className="flex flex-wrap items-center gap-2"><Button variant="outline" size="sm" className="text-[10px]" disabled={loading || preview || currentPage <= 1} onClick={() => runSearch(currentPage - 1, '')}><ArrowLeft />Prev Page</Button><Button variant="outline" size="sm" className="text-[10px]" disabled={loading || preview || totalPages === null || currentPage >= totalPages} onClick={() => runSearch(currentPage + 1, '')}>Next Page<ArrowRight /></Button>{post && <Button variant="ghost" size="sm" className="text-[10px] text-primary" disabled={loading || preview || !nextCursor} onClick={() => { if (nextCursor) void runSearch(currentPage + 1, nextCursor); }}>Use Next Cursor<ArrowRight /></Button>}</div></div>
         </section>
@@ -132,6 +181,7 @@ function Index() {
     </div>
     <Dialog open={inspect !== null} onOpenChange={open => { if (!open) setInspect(null); }}><DialogContent className="max-w-2xl"><DialogTitle>Inspect Item JSON</DialogTitle><DialogDescription>Respons asli item {platformName}</DialogDescription><pre className="raw-json max-h-[60vh]">{JSON.stringify(inspect, null, 2)}</pre><Button variant="outline" onClick={() => copyJSON(inspect)}><Copy />Copy JSON</Button></DialogContent></Dialog>
     <Dialog open={authOpen} onOpenChange={setAuthOpen}><DialogContent><DialogTitle>{user ? 'Akun workspace' : 'Masuk ke SocioScope'}</DialogTitle><DialogDescription>{user ? user : 'Masuk untuk menjalankan pencarian SocioAPI dengan aman.'}</DialogDescription>{user ? <Button variant="outline" onClick={async () => { await supabase.auth.signOut(); setAuthOpen(false); setCredits(null); }}><LogOut />Keluar</Button> : <Button variant="outline" onClick={signIn}><LovableMark />Lanjutkan dengan Lovable</Button>}</DialogContent></Dialog>
+    <Dialog open={historyOpen} onOpenChange={setHistoryOpen}><DialogContent className="max-w-2xl"><DialogTitle>Saved Instagram searches</DialogTitle><DialogDescription>Buka hasil tersimpan tanpa memanggil SocioAPI atau menggunakan kredit baru.</DialogDescription><div className="flex justify-end"><Button variant="ghost" size="sm" className="text-[10px]" disabled={historyLoading} onClick={() => void refreshHistory()}><RefreshCw className={historyLoading ? 'animate-spin' : ''} />Refresh</Button></div>{historyLoading && savedSearches.length === 0 ? <div role="status" className="py-10 text-center text-xs text-muted-foreground"><Loader2 className="mx-auto mb-3 animate-spin text-primary" />Memuat riwayat tersimpan…</div> : savedSearches.length > 0 ? <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">{savedSearches.map(saved => <button type="button" key={saved.id} className="w-full rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-primary/50" onClick={() => openSavedSearch(saved)}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-[12px] font-semibold">{saved.action === 'search_post' ? 'Postingan' : 'Profil'} · {savedQuery(saved)}</p><p className="mt-1.5 text-[10px] text-muted-foreground">{dateWIB(saved.created_at)} · {saved.result_count} hasil</p></div><span className="shrink-0 rounded border border-primary/20 bg-success-soft px-2 py-1 font-mono text-[9px] text-primary">{display(saved.credits_used)} kredit</span></div></button>)}</div> : <div className="rounded-md border border-dashed border-border py-10 text-center"><Database className="mx-auto mb-3 text-muted-foreground" /><p className="text-xs font-semibold">Belum ada pencarian Instagram tersimpan</p><p className="mt-2 text-[11px] text-muted-foreground">Jalankan pencarian berhasil untuk mulai mengisi riwayat akun Anda.</p></div>}</DialogContent></Dialog>
     <Dialog open={help} onOpenChange={setHelp}><DialogContent><DialogTitle>Bantuan SocioScope</DialogTitle><DialogDescription>Informasi pencarian dan data</DialogDescription><div className="space-y-4 text-sm text-muted-foreground"><p>Pilih TikTok atau Instagram, lalu cari postingan dengan keyword atau profil dengan username/nama.</p><p>Data contoh tidak menggunakan kredit. Pencarian nyata memerlukan akun dan menggunakan saldo SocioAPI.</p><p>N/A berarti data tidak tersedia. Engagement, views, dan reach ditampilkan secara terpisah. Waktu posting menggunakan WIB.</p></div></DialogContent></Dialog>
     <Dialog open={notifications} onOpenChange={setNotifications}><DialogContent><DialogTitle>Notifikasi</DialogTitle><DialogDescription>Aktivitas pencarian saat ini</DialogDescription><p className="py-5 text-sm text-muted-foreground">{error || (preview ? 'Belum ada aktivitas pencarian. Dashboard menampilkan data contoh.' : `Pencarian ${platformName} selesai dengan status HTTP ${result.http_status}.`)}</p></DialogContent></Dialog>
   </div>;

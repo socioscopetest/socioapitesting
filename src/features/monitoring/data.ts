@@ -2,6 +2,17 @@ export type Platform = 'tiktok' | 'instagram';
 export type Action = 'search_post' | 'search_profile';
 export type Item = Record<string, unknown>;
 export interface ApiResult { http_status: number; outbound_ip?: string | null; payload: Item }
+export interface SavedInstagramSearch {
+  id: string;
+  action: Action;
+  params_json: string;
+  response_json: string;
+  http_status: number;
+  credits_used: number | null;
+  result_count: number;
+  created_at: string;
+}
+export const shouldSyncInstagramResult = (platform: Platform, status: number): boolean => platform === 'instagram' && status === 200;
 export const asRecord = (value: unknown): Item => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Item : {};
 export const display = (value: unknown): string => value === null || value === undefined || value === '' ? 'N/A' : String(value);
 export const metric = (value: unknown): string => typeof value === 'number' ? new Intl.NumberFormat('en-US', { notation: value >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value) : display(value);
@@ -19,6 +30,15 @@ export const creditsUsed = (result: ApiResult): number | null => {
   const billing = asRecord(result.payload['billing']);
   return numberValue(billing['credit_used'] ?? billing['credits_used']);
 };
+export function profileMetricValues(item: Item, platform: Platform) {
+  const stats = asRecord(item['metrics']);
+  return {
+    followers: item['followers'] ?? item['follower_count'] ?? stats['followers'] ?? stats['follower_count'],
+    following: item['following'] ?? item['following_count'] ?? stats['following'] ?? stats['following_count'],
+    likes: item['likes'] ?? item['favorites'] ?? item['favourites_count'] ?? stats['likes'] ?? stats['favourites_count'],
+    posts: item[platform === 'tiktok' ? 'videos' : 'posts'] ?? item['event_count'] ?? stats[platform === 'tiktok' ? 'videos' : 'posts'] ?? stats['event_count'],
+  };
+}
 export const httpError = (status: number): string => ({ 400: 'Parameter pencarian tidak valid. Periksa keyword, tanggal, dan halaman.', 401: 'Akses tidak terautentikasi. Periksa kunci SocioAPI atau masuk kembali.', 402: 'Kredit SocioAPI tidak mencukupi untuk pencarian ini.', 403: 'Akses ditolak. Akun Anda tidak memiliki izin untuk endpoint ini.', 429: 'Terlalu banyak permintaan. Silakan coba lagi sebentar lagi.', 503: 'Kunci SocioAPI belum dikonfigurasi.' }[status] ?? `Layanan SocioAPI tidak tersedia (HTTP ${status}). Coba kembali.`);
 export const responseError = (result: ApiResult): string => {
   const message = result.http_status === 403 && typeof result.payload['message'] === 'string' && /IP Whitelist|IP .*not whitelisted/i.test(result.payload['message']) ? 'SocioAPI menolak akses: IP belum diizinkan. Periksa whitelist IP pada akun SocioAPI Anda sebelum menjalankan pencarian.' : httpError(result.http_status);

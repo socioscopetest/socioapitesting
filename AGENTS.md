@@ -34,3 +34,4 @@ use the editor.
 - Proxy SocioAPI through an authenticated TanStack server function using server-only secrets, not new Edge Functions, to match the project's runtime and protect API credits.
 - Keep illustrative preview data explicitly labeled and separate from live results and billing; never charge or imply a live request for previews.
 - Detect outbound IP in a server-only helper before each SocioAPI call and keep it outside the upstream payload; ipify diagnostics must not alter response data or imply a fixed provider-visible IP.
+- Persist successful Instagram searches as private, user-owned history and reload saved responses without another SocioAPI request; failed responses and TikTok searches stay out of that history.

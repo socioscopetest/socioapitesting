@@ -1,4 +1,4 @@
-export type Platform = 'tiktok' | 'instagram' | 'facebook' | 'youtube' | 'threads';
+export type Platform = 'tiktok' | 'instagram' | 'facebook' | 'youtube' | 'threads' | 'twitter';
 export type Action = 'search_post' | 'search_profile';
 export type Item = Record<string, unknown>;
 export interface ApiResult { http_status: number; outbound_ip?: string | null; payload: Item }
@@ -62,6 +62,15 @@ export function previewResult(platform: Platform, action: Action): ApiResult {
     { author_name: 'Rizky Pratama', author_username: 'rizkypratama', lang: 'id', published_at: '2026-11-26T06:15:00Z', original_id: '7441023678211548902', text: 'POV: kamu akhirnya nemu kopi yang pas sama selera kamu 🤌 Review jujur 3 coffee shop favorit di Jakarta. Nomor 3 wajib masuk list kalian!', hashtags: ['coffeeshop', 'coffeetok', 'jakarta', 'reviewkopi'], engagement: 8650, likes: 7200, comments: 450, shares: 1000, views: 92400, reach: null },
     { author_name: 'Kopi & Cerita', author_username: 'kopidancerita', lang: 'id', published_at: '2026-11-26T05:40:00Z', original_id: '7441012894592873021', text: 'Setiap cangkir punya cerita. Pagi ini, ceritanya tentang slow mornings dan aroma kopi yang baru diseduh. Selamat menikmati hari kalian. ☕', hashtags: ['coffeeshop', 'kopiindonesia', 'slowmorning'], engagement: 3240, likes: 2800, comments: 140, shares: 300, views: 38600, reach: null },
   ];
+  if (platform === 'twitter' && action === 'search_profile') {
+    return { http_status: 200, payload: { status: 'success', status_code: 200, message: 'Data berhasil ditemukan', time: { value: '175.784 ms', setTimeBeforeActions: true }, billing: { package_id: 5, package_name: 'Credit Standard Pack (2,500 Credits)', remaining_credits: 2493.1 }, total_data: 1, data: [{ platform: 'twitter', original_id: 'twitter-profile-preview', username: 'socioapi', fullname: 'SocioAPI', name: 'SocioAPI', bio: 'Social media data and analytics.', avatar: null, profile_picture: null, url: 'https://x.com/socioapi', follower_count: 12500, following_count: 320, event_count: 840, is_verified: false, verified: false, is_private: false, private: false, locations: [], location: null, last_seen: null, targeted: false, bot: false }], pagination: { total_items: 1, total_pages: 1, current_page: 1, page_size: 10 } } };
+  }
+  if (platform === 'twitter' && action === 'search_post') {
+    const twitterPosts: Item[] = [
+      { original_id: 'twitter-post-preview-1', title: 'Contoh hasil pencarian X', text: 'Ini adalah contoh respons Twitter Search Post SocioAPI. Ganti dengan hasil pencarian nyata untuk melihat percakapan.', url: 'https://x.com/socioapi', published_at: '2026-11-26T07:32:00Z', author_username: 'socioapi', author_name: 'SocioAPI', likes: 125, comments: 18, shares: 32, views: 4200, images: [], videos: [] },
+    ];
+    return { http_status: 200, payload: { status: 'success', status_code: 200, data: twitterPosts, pagination: { total_items: 1, total_pages: 1, current_page: 1, page_size: 10 }, billing: { remaining_credits: null, credit_used: 0 }, time: { value: null } } };
+  }
   if (platform === 'threads' && action === 'search_post') {
     const threadPosts: Item[] = [
       { platform: 'threads', original_id: '4011386309775528550', time: 1792969872, type: 'post', sender_id: '28978151893', sender_username: 'hakahaki_id', sender_name: 'HakaHaki', sender_avatar: null, sender_url: 'https://threads.com/@hakahaki_id', url: 'https://threads.com/@hakahaki_id/post/DerTphzCRJm', post: 'UPDATE: Prabowo berikan pesan khusus kepada Ketua OJK. "Tindak tegas coordinated trading!"', lang: 'id', engagement: 27, publish_date: 1792414533, images: [], videos: [], share_count: 9, comment_count: 18, impression: 14771, like_count: 75, quote_count: 0, repost_count: 1 },

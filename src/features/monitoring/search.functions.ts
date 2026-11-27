@@ -27,7 +27,7 @@ export const searchSocioAPI = createServerFn({ method: 'POST' })
           platform: data.platform,
           action: data.action,
           params_json: data.params,
-          response_json: payload,
+          response_json: JSON.parse(payloadJSON),
           http_status: response.status,
           credits_used: creditsUsed({ http_status: response.status, payload }),
           result_count: getItems(payload).length,

@@ -15,4 +15,7 @@ describe('Strict monitoring rules', () => {
   it('does not change TikTok storage behavior during Instagram setup', () => { expect(shouldSyncInstagramResult('tiktok', 200)).toBe(false); });
   it('routes post search to selected platform', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_post', { keyword: 'kopi', page: '2' }).href).toBe('https://api.socioapi.com/api/v1/events/instagram/search?keyword=kopi&page=2'); });
   it('routes profile search with platform filter', () => { expect(buildSearchUrl('https://api.socioapi.com', 'tiktok', 'search_profile', { username: 'nadia' }).href).toBe('https://api.socioapi.com/api/v1/senders/search?username=nadia&platform=tiktok'); });
+
+  it('routes Instagram Search Post to the Instagram events endpoint', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_post', { keyword: 'kopi', start_date: '2026-11-01', end_date: '2026-11-27', sort_by: 'time', sort_order: 'desc', page: '2', cursor: '' }).href).toBe('https://api.socioapi.com/api/v1/events/instagram/search?keyword=kopi&start_date=2026-11-01&end_date=2026-11-27&sort_by=time&sort_order=desc&page=2'); });
+  it('routes Instagram Search Profile to the senders endpoint with the Instagram platform filter', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_profile', { username: 'nadiaputri', name: '', page: '1', size: '10' }).href).toBe('https://api.socioapi.com/api/v1/senders/search?username=nadiaputri&page=1&size=10&platform=instagram'); });
 });

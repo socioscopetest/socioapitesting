@@ -3,6 +3,7 @@ import { getRequest } from '@tanstack/react-start/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { SUPABASE_URL as PUBLIC_SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY as PUBLIC_SUPABASE_KEY } from './config';
+import { supabase as browserSupabase } from './client';
 
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
@@ -14,7 +15,17 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+export const requireSupabaseAuth = createMiddleware({ type: 'function' })
+  .client(async ({ next }) => {
+    // TanStack server-function RPCs do not automatically forward the Supabase
+    // browser session. Attach the current access token to every protected call.
+    const { data, error } = await browserSupabase.auth.getSession();
+    if (error) throw new Error('Sesi login tidak dapat dibaca. Silakan masuk kembali.');
+    const accessToken = data.session?.access_token;
+    if (!accessToken) throw new Error('Sesi login tidak ditemukan. Silakan masuk kembali.');
+    return next({ headers: { Authorization: `Bearer ${accessToken}` } });
+  })
+  .server(async ({ next }) => {
   const SUPABASE_URL = process.env['SUPABASE_URL'] || PUBLIC_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = process.env['SUPABASE_PUBLISHABLE_KEY'] || PUBLIC_SUPABASE_KEY;
   const request = getRequest();

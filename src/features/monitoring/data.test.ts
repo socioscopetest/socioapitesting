@@ -62,8 +62,8 @@ describe('All nine SocioAPI platform request contracts', () => {
     ['threads', 'search_post', '/api/v1/events/threads/search?keyword=politik&event_type=post&page=1'],
     ['twitter', 'search_post', '/api/v1/events/twitter/search?keyword=politik&page=1'],
     ['news', 'search_post', '/api/v1/events/news/search?keyword=politik&page=1'],
-    ['tv', 'search_post', '/api/v1/transcribe/search?keyword=politik&source_type=tv&page=1'],
-    ['radio', 'search_post', '/api/v1/transcribe/search?keyword=politik&source_type=radio&page=1'],
+    ['tv', 'search_post', '/api/v1/transcribe/search?keyword=politik&page=1&source_type=tv'],
+    ['radio', 'search_post', '/api/v1/transcribe/search?keyword=politik&page=1&source_type=radio'],
   ] as const)('%s %s uses the expected endpoint and query', (platform, action, expected) => {
     const params = platform === 'threads'
       ? { keyword: 'politik', event_type: 'post', page: '1' }

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Activity, ArrowUpRight, ArrowRight, ArrowLeft, Bell, Check, ChevronRight, CircleHelp, Code2, Coins, Copy, FileText, Globe2, Instagram, LayoutDashboard, Loader2, Music2, Search, ShieldCheck, UserRound, Users, Zap, Clock3, Layers, Hash, Radio, Youtube, Facebook, AtSign, Newspaper, CheckCircle2, LogOut } from 'lucide-react';
+import { Activity, ArrowUpRight, ArrowRight, ArrowLeft, Bell, ChevronRight, CircleHelp, Code2, Coins, Copy, FileText, Globe2, Instagram, LayoutDashboard, Loader2, Music2, Search, ShieldCheck, UserRound, Users, Zap, Clock3, Layers, Hash, Radio, Youtube, Facebook, AtSign, Newspaper, CheckCircle2, LogOut } from 'lucide-react';
 import { LovableMark } from '@lovable.dev/cloud-auth-js/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
 import { searchSocioAPI } from '@/features/monitoring/search.functions';
 import { ResultCard } from '@/features/monitoring/results';
-import { asRecord, display, getItems, numberValue, creditsUsed, previewResult, httpError, type Platform, type Action, type ApiResult, type Item } from '@/features/monitoring/data';
+import { asRecord, display, getItems, numberValue, creditsUsed, previewResult, responseError, type Platform, type Action, type ApiResult, type Item } from '@/features/monitoring/data';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -80,7 +80,7 @@ function Index() {
       setResult(response); setPreview(false); setPage(targetPage); setCursor(targetCursor);
       const remaining = numberValue(asRecord(response.payload['billing'])['remaining_credits']);
       if (remaining !== null) setCredits(remaining);
-      if (response.http_status !== 200) setError(httpError(response.http_status));
+      if (response.http_status !== 200) setError(responseError(response));
       else {
         if (!post && username.trim()) setHistory(old => ({ ...old, [platform]: [username.trim(), ...old[platform].filter(u => u !== username.trim())].slice(0, 5) }));
         toast.success(`${getItems(response.payload).length} ${post ? 'postingan' : 'profil'} diterima`);

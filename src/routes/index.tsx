@@ -73,10 +73,10 @@ function Index() {
   const platformName = platform === 'tiktok' ? 'TikTok' : 'Instagram';
   const post = action === 'search_post';
   const pagination = asRecord(result.payload['pagination']);
+  const items = getItems(result.payload);
   const currentPage = items.length === 0 && !preview ? 1 : numberValue(pagination['current_page']) ?? page;
   const totalPages = numberValue(pagination['total_pages']);
   const nextCursor = typeof pagination['next_cursor'] === 'string' && pagination['next_cursor'] ? pagination['next_cursor'] : null;
-  const items = getItems(result.payload);
   const filtered = items.filter(item => JSON.stringify(item).toLowerCase().includes(filter.toLowerCase()));
   const used = creditsUsed(result);
   function changeMode(p: Platform, a: Action) {

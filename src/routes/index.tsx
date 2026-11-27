@@ -58,7 +58,6 @@ function Index() {
   const checkAPIHost = useServerFn(checkSocioAPIHost);
   const [connectionCheck, setConnectionCheck] = useState<{reachable:boolean;key_configured:boolean;host_status:number|null;outbound_ip:string|null;message:string}|null>(null);
   const [checkingConnection, setCheckingConnection] = useState(false);
-  const connectionStatusLabel = connectionCheck ? (connectionCheck.reachable ? 'Host reachable' : 'Host unreachable') : null;
   async function runConnectionCheck() {
     if (!user) { setAuthOpen(true); return; }
     setCheckingConnection(true);

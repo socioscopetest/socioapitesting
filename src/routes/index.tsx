@@ -138,7 +138,11 @@ function Index() {
           toast.success(`${count} ${platform === 'tv' || platform === 'radio' ? 'rekaman siaran' : post ? 'postingan' : 'profil'} diterima dan tersimpan`);
         } else toast.success(`${count} ${platform === 'tv' || platform === 'radio' ? 'rekaman siaran' : post ? 'postingan' : 'profil'} diterima`);
       }
-    } catch { setError('Pencarian gagal. Periksa koneksi atau masuk kembali, lalu coba lagi.'); }
+    } catch (cause) {
+      console.error('Monitoring search request failed:', cause);
+      const message = cause instanceof Error ? cause.message : '';
+      setError(message && /Sesi login|Unauthorized/i.test(message) ? message : 'Pencarian gagal terhubung ke server. Periksa koneksi, status login, dan konfigurasi SocioAPI, lalu coba lagi.');
+    }
     finally { setLoading(false); }
   }
   async function copyJSON(value: unknown = preview ? result.payload : result) {

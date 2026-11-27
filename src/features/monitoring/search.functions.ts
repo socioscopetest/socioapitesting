@@ -5,7 +5,7 @@ import { asRecord, buildSearchUrl, creditsUsed, getItems, shouldSyncInstagramRes
 
 export const searchSocioAPI = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ platform: z.enum(['tiktok', 'instagram']), action: z.enum(['search_post', 'search_profile']), params: z.record(z.string(), z.string().max(500)) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ platform: z.enum(['tiktok', 'instagram', 'facebook']), action: z.enum(['search_post', 'search_profile']), params: z.record(z.string(), z.string().max(500)) }).parse(input))
   .handler(async ({ data, context }) => {
     const { detectOutboundIP } = await import('./outbound.server');
     const outbound_ip = await detectOutboundIP();

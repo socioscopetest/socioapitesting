@@ -1,4 +1,4 @@
-export type Platform = 'tiktok' | 'instagram';
+export type Platform = 'tiktok' | 'instagram' | 'facebook';
 export type Action = 'search_post' | 'search_profile';
 export type Item = Record<string, unknown>;
 export interface ApiResult { http_status: number; outbound_ip?: string | null; payload: Item }
@@ -63,5 +63,5 @@ export function previewResult(platform: Platform, action: Action): ApiResult {
     { author_name: 'Kopi & Cerita', author_username: 'kopidancerita', lang: 'id', published_at: '2026-11-26T05:40:00Z', original_id: '7441012894592873021', text: 'Setiap cangkir punya cerita. Pagi ini, ceritanya tentang slow mornings dan aroma kopi yang baru diseduh. Selamat menikmati hari kalian. ☕', hashtags: ['coffeeshop', 'kopiindonesia', 'slowmorning'], engagement: 3240, likes: 2800, comments: 140, shares: 300, views: 38600, reach: null },
   ];
   const profiles = posts.map((p, index) => ({ fullname: p['author_name'], username: p['author_username'], bio: ['Coffee enthusiast · Jakarta ☕\nSharing places, one cup at a time.', 'Lifestyle, coffee & everyday stories.\nJakarta, Indonesia 🇮🇩', 'Kopi lokal. Cerita setiap hari. ☕'][index], verified: index === 1, followers: [248500, 186200, 32700][index], following: [482, 321, 128][index], likes: [3200000, 1800000, null][index], videos: [284, 196, 82][index], posts: [428, 315, 201][index], original_id: p['original_id'] }));
-  return { http_status: 200, payload: { data: action === 'search_post' ? posts.map(p => ({ ...p, url: platform === 'tiktok' ? `https://www.tiktok.com/@${p['author_username']}/video/${p['original_id']}` : `https://www.instagram.com/${p['author_username']}/` })) : profiles, pagination: { total_items: 3, current_page: 1, page_size: 3, total_pages: 1, next_cursor: null }, billing: { remaining_credits: null, credits_used: 0 }, time: { value: null } } };
+  return { http_status: 200, payload: { data: action === 'search_post' ? posts.map(p => ({ ...p, url: platform === 'tiktok' ? `https://www.tiktok.com/@${p['author_username']}/video/${p['original_id']}` : platform === 'instagram' ? `https://www.instagram.com/${p['author_username']}/` : undefined })) : profiles, pagination: { total_items: 3, current_page: 1, page_size: 3, total_pages: 1, next_cursor: null }, billing: { remaining_credits: null, credits_used: 0 }, time: { value: null } } };
 }

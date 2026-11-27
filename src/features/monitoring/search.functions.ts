@@ -40,8 +40,21 @@ export const searchSocioAPI = createServerFn({ method: 'POST' })
         }
       }
       return { http_status: response.status, outbound_ip, payloadJSON, synced_search_id, sync_error };
-    } catch {
-      return { http_status: 502, outbound_ip, payloadJSON: JSON.stringify({ message: 'SocioAPI tidak dapat dihubungi. Silakan coba lagi.' }), synced_search_id: null, sync_error: false };
+    } catch (cause) {
+      const timedOut = cause instanceof Error && (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+      console.error('SocioAPI upstream request failed:', cause instanceof Error ? { name: cause.name, message: cause.message } : 'Unknown error');
+      return {
+        http_status: timedOut ? 504 : 502,
+        outbound_ip,
+        payloadJSON: JSON.stringify({
+          message: timedOut
+            ? 'SocioAPI tidak merespons dalam 30 detik (timeout).'
+            : 'Server tidak dapat menjangkau SocioAPI. Periksa DNS, TLS, jaringan, atau base URL.',
+          code: timedOut ? 'SOCIOAPI_TIMEOUT' : 'SOCIOAPI_NETWORK_ERROR',
+        }),
+        synced_search_id: null,
+        sync_error: false,
+      };
     }
   });
 

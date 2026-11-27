@@ -1,4 +1,4 @@
-export type Platform = 'tiktok' | 'instagram' | 'facebook' | 'youtube' | 'threads' | 'twitter' | 'news';
+export type Platform = 'tiktok' | 'instagram' | 'facebook' | 'youtube' | 'threads' | 'twitter' | 'news' | 'tv' | 'radio';
 export type Action = 'search_post' | 'search_profile';
 export type Item = Record<string, unknown>;
 export interface ApiResult { http_status: number; outbound_ip?: string | null; payload: Item }
@@ -50,13 +50,29 @@ export const responseError = (result: ApiResult): string => {
   return result.http_status === 403 ? `${message} Outbound IP: ${display(result.outbound_ip)}. IP ini terdeteksi oleh ipify dan dapat berbeda dari IP yang dilihat SocioAPI atau berubah setelah aplikasi dipublikasikan.` : message;
 };
 export function buildSearchUrl(base: string, platform: Platform, action: Action, params: Record<string, string>): URL {
-  const url = new URL(action === 'search_post' ? `/api/v1/events/${platform}/search` : '/api/v1/senders/search', base);
-  const allowed = action === 'search_post' ? ['keyword', 'event_type', 'start_date', 'end_date', 'sort_by', 'sort_order', 'page', 'cursor'] : ['username', 'name', 'page', 'size'];
+  const broadcast = platform === 'tv' || platform === 'radio';
+  const url = new URL(broadcast ? '/api/v1/transcribe/search' : action === 'search_post' ? `/api/v1/events/${platform}/search` : '/api/v1/senders/search', base);
+  const allowed = broadcast ? ['keyword', 'source_name', 'source_type', 'start_date', 'end_date', 'page', 'size', 'sort_by', 'sort_order', 'status'] : action === 'search_post' ? ['keyword', 'event_type', 'start_date', 'end_date', 'sort_by', 'sort_order', 'page', 'cursor'] : ['username', 'name', 'page', 'size'];
   for (const key of allowed) { const value = params[key]; if (value?.trim()) url.searchParams.set(key, value.trim()); }
+  if (broadcast) url.searchParams.set('source_type', platform);
   if (action === 'search_profile') url.searchParams.set('platform', platform);
   return url;
 }
 export function previewResult(platform: Platform, action: Action): ApiResult {
+  if (platform === 'tv' || platform === 'radio') {
+    const isRadio = platform === 'radio';
+    const sample: Item = {
+      source_name: isRadio ? 'trijaya_104.6_fm' : 'kompas_tv', source_type: platform,
+      file_hash: 'broadcast-preview-sample', file_path: '', file_len: 59, date: '2026-11-26',
+      time_start: 1795706698, time_end: 1795706757,
+      text: 'Contoh transkrip siaran untuk preview SocioScope. Jalankan pencarian untuk memuat rekaman dan transkrip asli.',
+      language: 'id', status: 'transcribed', projects: ['socia'], storage_type: 's3',
+      segments_raw: [{ start: 0, end: 8.5, text: 'Contoh segmen transkrip siaran.' }],
+      text_segments: '00:00:00.000 --> 00:00:08.500\\nContoh segmen transkrip siaran.',
+      keywords: ['contoh', 'siaran'], topic: 'Informasi', sentiments: {}, auto_tags: [],
+    };
+    return { http_status: 200, payload: { status: 'success', status_code: 200, data: [sample], pagination: { total_items: 1, total_pages: 1, current_page: 1, page_size: 10 }, billing: { remaining_credits: null, credit_used: 0 }, time: { value: 'Preview' } } };
+  }
   const posts: Item[] = [
     { author_name: 'Nadia Putri', author_username: 'nadiaputri', lang: 'id', published_at: '2026-11-26T07:32:00Z', original_id: '7441023896502189318', text: 'Weekend well spent! ☕ Menemukan hidden gem coffee shop di Jakarta. Tempatnya cozy banget, kopinya juga juara. Siapa yang udah pernah ke sini?', hashtags: ['coffeeshop', 'jakarta', 'hiddengem', 'kopilokal'], engagement: 14820, likes: 12500, comments: 320, shares: 2000, views: 185600, reach: null },
     { author_name: 'Rizky Pratama', author_username: 'rizkypratama', lang: 'id', published_at: '2026-11-26T06:15:00Z', original_id: '7441023678211548902', text: 'POV: kamu akhirnya nemu kopi yang pas sama selera kamu 🤌 Review jujur 3 coffee shop favorit di Jakarta. Nomor 3 wajib masuk list kalian!', hashtags: ['coffeeshop', 'coffeetok', 'jakarta', 'reviewkopi'], engagement: 8650, likes: 7200, comments: 450, shares: 1000, views: 92400, reach: null },

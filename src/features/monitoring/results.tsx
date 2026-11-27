@@ -5,8 +5,9 @@ import { display, metric, dateWIB, asRecord, profileMetricValues, type Item, typ
 export function ResultCard({ item, index, platform, action, onInspect }: { item: Item; index: number; platform: Platform; action: Action; onInspect: (item: Item) => void }) {
   const profile = action === 'search_profile';
   const author = asRecord(item['author']);
-  const name = profile ? item['fullname'] ?? item['name'] : item['author_name'] ?? item['sender_name'] ?? author['name'] ?? asRecord(item['domain'])['domain_name'];
-  const username = profile ? item['username'] : item['author_username'] ?? item['sender_username'] ?? author['username'];
+  const broadcast = platform === 'tv' || platform === 'radio';
+  const name = broadcast ? item['source_name'] : profile ? item['fullname'] ?? item['name'] : item['author_name'] ?? item['sender_name'] ?? author['name'] ?? asRecord(item['domain'])['domain_name'];
+  const username = broadcast ? item['source_type'] : profile ? item['username'] : item['author_username'] ?? item['sender_username'] ?? author['username'];
   const initials = display(name).split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
   const stats = asRecord(item['metrics']);
   const profileValues = profileMetricValues(item, platform);
@@ -14,7 +15,7 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
   const avatar = profile ? item['avatar'] ?? item['profile_picture'] : item['author_avatar'] ?? item['sender_avatar'];
   const images = Array.isArray(item['images']) ? item['images'].map(asRecord).filter(media => typeof media['original_url'] === 'string') : [];
   const videos = Array.isArray(item['videos']) ? item['videos'].map(asRecord).filter(media => typeof media['original_url'] === 'string') : [];
-  const metricValues = profile ? [
+  const metricValues = broadcast ? [] : profile ? [
     ['Followers', profileValues.followers, Eye], ['Following', profileValues.following, Radio], ['Likes/Fav', profileValues.likes, Heart], [platform === 'tiktok' ? 'Videos' : 'Posts', profileValues.posts, Activity],
   ] as const : [
     ['Engage', item['engagement'] ?? stats['engagement'], Activity], ['Likes', item['likes'] ?? item['like_count'] ?? stats['likes'], Heart], ['Comments', item['comments'] ?? item['comment_count'] ?? stats['comments'], MessageCircle], ['Shares', item['shares'] ?? item['share_count'] ?? stats['shares'], Share2], ['Views', item['views'] ?? item['impression'] ?? stats['views'] ?? stats['impression'], Eye], ['Reach', item['reach'] ?? stats['reach'], Radio],
@@ -23,6 +24,8 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
   const candidate = typeof item['url'] === 'string' ? item['url'] : typeof item['sender_url'] === 'string' ? item['sender_url'] : fallback;
   const url = candidate && /^https:\/\//.test(candidate) ? candidate : undefined;
   const newsDomain = asRecord(item['domain'])['domain_name'];
+  const broadcastDate = typeof item['time_start'] === 'number' ? item['time_start'] * 1000 : item['date'];
+  const mediaPath = typeof item['file_path'] === 'string' && /^https:\\/\\//.test(item['file_path']) ? item['file_path'] : undefined;
   return <article className="post-card">
     <div className="post-body">
       <div className="flex items-start justify-between gap-3">
@@ -30,9 +33,13 @@ export function ResultCard({ item, index, platform, action, onInspect }: { item:
           <div className={`avatar ${index % 3 === 1 ? 'rose' : index % 3 === 2 ? 'neutral' : ''}`}>{typeof avatar === 'string' && /^https:\/\//.test(avatar) ? <img src={avatar} alt={`${display(name)} avatar`} className="h-full w-full rounded-full object-cover" /> : initials}</div>
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-[13px] font-bold">{display(name)}</h3>{profile ? <span className={`flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[9px] ${item['verified'] || item['is_verified'] ? 'text-primary' : 'text-muted-foreground'}`}>{item['verified'] || item['is_verified'] ? <><BadgeCheck size={11} /> Verified</> : 'Standard'}</span> : <span className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">{display(item['lang'])}</span>}</div><p className="mt-1 text-[11px] text-muted-foreground">{username ? `@${username}` : 'N/A'}</p></div>
         </div>
-        {!profile && <time className="shrink-0 text-right text-[9px] text-muted-foreground">{dateWIB(item['published_at'] ?? (typeof item['publish_date'] === 'number' ? item['publish_date'] * 1000 : item['publish_date']))}</time>}
+        {!profile && <time className="shrink-0 text-right text-[9px] text-muted-foreground">{dateWIB(broadcast ? broadcastDate : item['published_at'] ?? (typeof item['publish_date'] === 'number' ? item['publish_date'] * 1000 : item['publish_date']))}</time>}
       </div>
       <p className="post-text whitespace-pre-line">{display(profile ? item['bio'] : item['title'] || item['text'] || item['post'])}</p>
+      {broadcast && mediaPath && (platform === 'tv' ? <video controls preload="none" className="mt-3 w-full rounded-md border border-border" src={mediaPath}>Browser tidak mendukung pemutar video.</video> : <audio controls preload="none" className="mt-3 w-full" src={mediaPath}>Browser tidak mendukung pemutar audio.</audio>)}
+      {broadcast && typeof item['text_segments'] === 'string' && <details className="mt-3 rounded-md border border-border bg-background p-3"><summary className="cursor-pointer text-[11px] font-semibold">Transkrip bertimestamp</summary><pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[10px] leading-5 text-muted-foreground">{item['text_segments']}</pre></details>}
+      {broadcast && Array.isArray(item['keywords']) && <div className="mt-2 flex flex-wrap gap-2">{(item['keywords'] as unknown[]).map((tag, i) => <span key={i} className="hashtag">#{String(tag)}</span>)}</div>}
+      {broadcast && <p className="mt-2 text-[10px] text-muted-foreground">Durasi: {display(item['file_len'])} detik · Status: {display(item['status'])} · Topik: {display(item['topic'])}</p>}
       {!profile && platform === 'news' && typeof item['text'] === 'string' && item['title'] && <p className="mt-2 line-clamp-4 whitespace-pre-line text-[11px] leading-6 text-muted-foreground">{item['text']}</p>}
       {!profile && platform === 'news' && typeof newsDomain === 'string' && <p className="mt-2 text-[10px] font-medium text-primary">{newsDomain}</p>}
       {!profile && images.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{images.slice(0, 4).map((media, i) => <img key={String(media['id'] ?? i)} src={String(media['original_url'])} alt={String(media['caption'] ?? `Post image ${i + 1}`)} loading="lazy" className="max-h-64 w-full rounded-md border border-border object-cover" />)}</div>}

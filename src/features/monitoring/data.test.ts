@@ -20,6 +20,16 @@ describe('Strict monitoring rules', () => {
   it('saves successful Instagram results for account sync', () => { expect(shouldSyncInstagramResult('instagram', 200)).toBe(true); });
   it('does not save failed Instagram responses as successful history', () => { expect(shouldSyncInstagramResult('instagram', 403)).toBe(false); });
   it('does not change TikTok storage behavior during Instagram setup', () => { expect(shouldSyncInstagramResult('tiktok', 200)).toBe(false); });
+  it('routes TV and Radio Broadcast Search through the transcription endpoint with their source types', () => {
+    expect(buildSearchUrl('https://api.socioapi.com', 'tv', 'search_post', { keyword: 'politik', source_name: 'kompas_tv', source_type: 'tv', start_date: '2026-03-01', end_date: '2026-03-06', page: '1', size: '10', sort_by: 'time_start', sort_order: 'desc', status: 'transcribed' }).href).toBe('https://api.socioapi.com/api/v1/transcribe/search?keyword=politik&source_name=kompas_tv&source_type=tv&start_date=2026-03-01&end_date=2026-03-06&page=1&size=10&sort_by=time_start&sort_order=desc&status=transcribed');
+    expect(buildSearchUrl('https://api.socioapi.com', 'radio', 'search_post', { keyword: 'politik', source_name: 'trijaya_104.6_fm', start_date: '2026-11-26', end_date: '2026-11-26', page: '1', size: '10', sort_by: 'time_start', sort_order: 'desc', status: 'transcribed' }).searchParams.get('source_type')).toBe('radio');
+  });
+  it('previews broadcast transcription fields and pagination without fabricated media URLs', () => {
+    const item = getItems(previewResult('radio', 'search_post').payload)[0];
+    expect(item['source_type']).toBe('radio'); expect(item['source_name']).toBe('trijaya_104.6_fm');
+    expect(item['file_path']).toBe(''); expect(item['text_segments']).toContain('00:00:00');
+    expect(asRecord(previewResult('tv', 'search_post').payload)['pagination']).toBeUndefined();
+  });
   it('routes post search to selected platform', () => { expect(buildSearchUrl('https://api.socioapi.com', 'instagram', 'search_post', { keyword: 'kopi', page: '2' }).href).toBe('https://api.socioapi.com/api/v1/events/instagram/search?keyword=kopi&page=2'); });
   it('routes profile search with platform filter', () => { expect(buildSearchUrl('https://api.socioapi.com', 'tiktok', 'search_profile', { username: 'nadia' }).href).toBe('https://api.socioapi.com/api/v1/senders/search?username=nadia&platform=tiktok'); });
 

@@ -21,6 +21,7 @@ export const lovable = {
       const result = await lovableAuth.signInWithOAuth(provider, {
         ...opts,
         extraParams: {
+          project_id: "7a8d2998-5d38-43f9-a69a-d305ba0e049b",
           ...opts?.extraParams,
         },
       });

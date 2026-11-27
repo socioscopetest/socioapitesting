@@ -47,7 +47,7 @@ function Index() {
   const [loading, setLoading] = useState(false); const [error, setError] = useState('');
   const [inspect, setInspect] = useState<Item | null>(null);
   const [help, setHelp] = useState(false); const [notifications, setNotifications] = useState(false);
-  const [user, setUser] = useState<string | null>(null); const [authOpen, setAuthOpen] = useState(false);
+  const [user, setUser] = useState<string | null>(null); const [authLoading, setAuthLoading] = useState(true); const [authOpen, setAuthOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [savedSearches, setSavedSearches] = useState<SavedInstagramSearch[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -81,8 +81,10 @@ function Index() {
   }, [listSavedSearches]);
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => { if (mounted) setUser(data.session?.user.email ?? data.session?.user.id ?? null); });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => { setUser(session?.user.email ?? session?.user.id ?? null); });
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (mounted) { setUser(data.session?.user.email ?? data.session?.user.id ?? null); setAuthLoading(false); if (error) console.error('Unable to restore Supabase session:', error); }
+    }).catch(error => { console.error('Unable to restore Supabase session:', error); if (mounted) setAuthLoading(false); });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => { setUser(session?.user.email ?? session?.user.id ?? null); setAuthLoading(false); });
     return () => { mounted = false; data.subscription.unsubscribe(); };
   }, []);
   useEffect(() => {
@@ -166,6 +168,26 @@ function Index() {
     try { await navigator.clipboard.writeText(JSON.stringify(value, null, 2)); toast.success('JSON berhasil disalin'); }
     catch { toast.error('Tidak dapat menyalin JSON. Periksa izin clipboard browser.'); }
   }
+  if (authLoading) return <div className="flex min-h-screen items-center justify-center bg-background"><div className="flex flex-col items-center gap-3 text-muted-foreground"><Loader2 className="animate-spin text-primary" size={28} /><p className="text-sm">Memeriksa sesi akun…</p></div></div>;
+  if (!user) return <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+    <div className="pointer-events-none absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 15% 15%, hsl(var(--primary) / .22), transparent 32%), radial-gradient(circle at 85% 70%, hsl(var(--primary) / .12), transparent 30%)' }} />
+    <header className="relative z-10 flex items-center justify-between border-b border-border/70 px-6 py-5 md:px-12">
+      <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary"><Activity size={23} /></div><div><p className="text-base font-extrabold tracking-tight">SocioScope</p><p className="text-[10px] text-muted-foreground">SOCIAL MEDIA INTELLIGENCE</p></div></div>
+      <Button variant="outline" onClick={() => setAuthOpen(true)}>Masuk</Button>
+    </header>
+    <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-16 md:px-12">
+      <div className="max-w-3xl"><span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold tracking-wider text-primary"><ShieldCheck size={13} /> SECURE MONITORING WORKSPACE</span>
+        <h1 className="mt-7 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">Pahami percakapan digital. <span className="text-primary">Ambil keputusan lebih cerdas.</span></h1>
+        <p className="mt-6 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">Pantau postingan, profil, dan percakapan dari berbagai platform dalam satu workspace. Masuk untuk mengakses pencarian, analitik, dan riwayat monitoring Anda.</p>
+        <div className="mt-9 flex flex-wrap gap-3"><Button size="lg" onClick={() => setAuthOpen(true)}>Masuk ke Dashboard <ArrowRight size={17} /></Button><Button size="lg" variant="outline" onClick={() => setAuthOpen(true)}>Buat akun</Button></div>
+      </div>
+      <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[{ icon: Search, title: 'Social Search', detail: 'Cari postingan dan profil berdasarkan keyword.' }, { icon: Globe2, title: 'Multi-platform', detail: 'Satu workspace untuk berbagai sumber digital.' }, { icon: Database, title: 'Saved Searches', detail: 'Buka kembali hasil pencarian yang tersimpan.' }, { icon: ShieldCheck, title: 'Private Workspace', detail: 'Riwayat pencarian terikat pada akun Anda.' }].map(item => <div key={item.title} className="rounded-xl border border-border bg-card/80 p-5 backdrop-blur"><item.icon className="mb-4 text-primary" size={21} /><h2 className="text-sm font-bold">{item.title}</h2><p className="mt-2 text-xs leading-5 text-muted-foreground">{item.detail}</p></div>)}
+      </div>
+    </main>
+    <footer className="relative z-10 border-t border-border/70 px-6 py-5 text-center text-[10px] text-muted-foreground">© SocioScope · Social Media Monitoring</footer>
+    <AuthDialog open={authOpen} onOpenChange={setAuthOpen} user={user} onLovableSignIn={signIn} />
+  </div>;
   return <div className="min-h-screen">
     <aside className="app-rail" aria-label="Navigasi dashboard">
       <a href="#dashboard" className="brand-symbol" aria-label="SocioScope"><Activity size={24} strokeWidth={2.5} /></a>
